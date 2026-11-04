@@ -76,7 +76,7 @@ def Sword_Dice_roll(counts, frame):
     
 def show_faces():
     move_dice.clip_draw(0, 0, 100, 100, 200, 500, 83,83)
-    attack_dice.clip_draw(0, 0, 100, 100, 400, 500, 80,80)
+    attack_dice.clip_draw(0, 0, 100, 100, 400, 500, 73,73)
     defense_dice.clip_draw(0, 0, 100, 100, 600, 500, 83,83)
     critical_dice.clip_draw(0, 0, 100, 100, 400, 400, 83,83)
     sword_dice.clip_draw(0, 0, 100, 100, 200, 400, 83,83)
