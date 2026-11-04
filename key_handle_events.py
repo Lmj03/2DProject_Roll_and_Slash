@@ -1,6 +1,9 @@
 from pico2d import *
 
 running = True
+
+Player_dir = 0 # 
+
 def handle_events():
     global running
     events = get_events()
