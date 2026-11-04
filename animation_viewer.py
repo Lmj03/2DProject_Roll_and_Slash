@@ -45,7 +45,21 @@ def Animaiton_viewer():
         
 
 def Run_Animation_viewer():
-    pass
+    global counts, frame
+    while running:
+        handle_events()
+        if running == False:
+            break
+        clear_canvas()
+        run(counts, frame)
+        update_canvas()
+        frame += 1
+        delay(0.03)
+        if frame == 10:
+            counts += 1
+            if counts == 9: counts = 0
+            frame = 0
+            delay(0.5)
 
 def Move_Dice_roll(counts, frame):
     if counts < 20 and counts > 1:
