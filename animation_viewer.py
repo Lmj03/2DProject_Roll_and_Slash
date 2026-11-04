@@ -1,6 +1,4 @@
 from pico2d import *
-# 공격은 9, 구르기는 5, 점프는 7, 걷기는 8, 달리기는 6프레임
-# 공격 프레임은 3~6프레임의 크기는 200x200임.
 counts = 0
 frame = 0
 running = True
@@ -104,7 +102,10 @@ def Run_Animation_viewer():
         if frame == 10:
             counts += 1
             if counts == 5: counts = 6
-            if counts == 9: counts = 0
+            if counts == 9: 
+                counts = 0
+                frame = 0
+                break
             frame = 0
             delay(0.5)
 
@@ -115,12 +116,28 @@ def run(counts, frame):
         runs.clip_composite_draw(frame*100, (counts-5)*100, 100, 100, math.radians(180), 'v', 400, 300)
 
 def Attack_Animation_viewer():
-    pass
+    global counts, frame
+    while running:
+        handle_events()
+        if running == False:
+            break
+        clear_canvas()
+        normal_Attack(counts, frame)
+        update_canvas()
+        frame += 1
+        delay(0.05)
+        if frame == 10:
+            counts += 1
+            if counts == 3: counts = 0
+            frame = 0
+            delay(0.3)
+    
 
 def normal_Attack(counts, frame):
-    pass
+    normal_attack.clip_draw(frame*100, counts*100, 100, 100, 400, 300)
 
 open_canvas()
 load_images()
 # Animaiton_viewer()
 Run_Animation_viewer()
+Attack_Animation_viewer()
