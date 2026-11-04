@@ -57,6 +57,7 @@ def Run_Animation_viewer():
         delay(0.03)
         if frame == 10:
             counts += 1
+            if counts == 5: counts = 6
             if counts == 9: counts = 0
             frame = 0
             delay(0.5)
@@ -115,4 +116,5 @@ def run(counts, frame):
             
 open_canvas()
 load_images()
-Animaiton_viewer()
+# Animaiton_viewer()
+Run_Animation_viewer()
