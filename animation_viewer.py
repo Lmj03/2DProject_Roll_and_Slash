@@ -5,7 +5,7 @@ counts = 0
 frame = 0
 running = True
 def load_images():
-    global move_dice_roll, move_dice, attack_dice_roll, attack_dice, defense_dice_roll, defense_dice, critical_dice_roll, critical_dice, sword_dice_roll, sword_dice
+    global move_dice_roll, move_dice, attack_dice_roll, attack_dice, defense_dice_roll, defense_dice, critical_dice_roll, critical_dice, sword_dice_roll, sword_dice, runs
     move_dice_roll = load_image('asset/Move_Dice_Roll.png')
     move_dice = load_image('asset/Move_Dice.png')
     attack_dice_roll = load_image('asset/Attack_Dice_Roll.png')
@@ -16,6 +16,7 @@ def load_images():
     critical_dice = load_image('asset/Critical_Dice.png')
     sword_dice_roll = load_image('asset/Sword_Dice_Roll.png')
     sword_dice = load_image('asset/Sword_Dice.png')
+    runs = load_image('asset/Run.png')
 
 
 def Animaiton_viewer():
