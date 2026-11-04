@@ -1,7 +1,15 @@
 from pico2d import *
-import key_handle_events
 counts = 0
 frame = 0
+running = True
+def handle_events():
+    global running
+    events = get_events()
+    for event in events:
+        if event.type == SDL_QUIT:
+            running = False
+        elif event.type == SDL_KEYDOWN and event.key == SDLK_ESCAPE:
+            running = False
 
 def load_images():
     global move_dice_roll, move_dice, attack_dice_roll, attack_dice, defense_dice_roll, defense_dice, critical_dice_roll, critical_dice, sword_dice_roll, sword_dice, runs, normal_attack, idle_animation
@@ -21,9 +29,9 @@ def load_images():
     
 def Animaiton_viewer():
     global counts, frame
-    while key_handle_events.running:
-        key_handle_events.handle_events()
-        if key_handle_events.running == False:
+    while running:
+        handle_events()
+        if running == False:
             break
         clear_canvas()
         if counts == 20:
@@ -82,9 +90,9 @@ def show_faces():
 
 def Run_Animation_viewer():
     global counts, frame
-    while key_handle_events.running:
-        key_handle_events.handle_events()
-        if key_handle_events.running == False:
+    while running:
+        handle_events()
+        if running == False:
             break
         clear_canvas()
         run(counts, frame)
@@ -109,9 +117,9 @@ def run(counts, frame):
 
 def Attack_Animation_viewer():
     global counts, frame
-    while key_handle_events.running:
-        key_handle_events.handle_events()
-        if key_handle_events.running == False:
+    while running:
+        handle_events()
+        if running == False:
             break
         clear_canvas()
         normal_Attack(counts, frame)
@@ -129,9 +137,9 @@ def normal_Attack(counts, frame):
 
 def Idle_Animation_viewer():
     global counts, frame
-    while key_handle_events.running:
-        key_handle_events.handle_events()
-        if key_handle_events.running == False:
+    while running:
+        handle_events()
+        if running == False:
             break
         clear_canvas()
         Idle_Animation(counts, frame)
@@ -149,7 +157,7 @@ def Idle_Animation(counts, frame):
 
 open_canvas()
 load_images()
-# Animaiton_viewer()
+Animaiton_viewer()
 #Run_Animation_viewer()
-#Attack_Animation_viewer()
-Idle_Animation_viewer()
+# Attack_Animation_viewer()
+# Idle_Animation_viewer()
