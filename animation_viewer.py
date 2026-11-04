@@ -43,7 +43,10 @@ def Animaiton_viewer():
             counts += 1
             delay(0.03)
         
-        
+
+def Run_Animation_viewer():
+    pass
+
 def Move_Dice_roll(counts, frame):
     if counts < 20 and counts > 1:
         move_dice_roll.clip_draw(frame*100, 0, 100, 100, 200, 500)
@@ -91,7 +94,10 @@ def handle_events():
             running = False
 
 def run(counts, frame):
-    pass
+    if counts < 5:
+        runs.clip_draw(frame*100, counts*100, 100, 100, 400, 300)
+    else:
+        runs.clip_composite_draw(frame*100, (counts-5)*100, 100, 100, math.radians(180), 'v', 400, 300)
             
 open_canvas()
 load_images()
