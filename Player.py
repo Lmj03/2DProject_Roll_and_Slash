@@ -1,7 +1,7 @@
 from pico2d import *
 import key_handle_events
 
-class Player:
+class player:
     def __init__(self):
         self.x = 400
         self.y = 300
@@ -13,6 +13,10 @@ class Player:
         self.state = 0 # 0 idle , 1 run , 2 attack
         
     def handle_events(self, event):
+        if (event.type not in (SDL_KEYDOWN, SDL_KEYUP) or
+                event.key not in (SDLK_LEFT, SDLK_RIGHT, SDLK_UP, SDLK_DOWN)):
+            return
+        
         if event.type == SDL_KEYDOWN:
             if event.key == SDLK_RIGHT:
                 self.dir = 2
@@ -26,9 +30,16 @@ class Player:
             elif event.key == SDLK_UP:
                 self.dir = 0
                 self.state = 1
+        if event.type == SDL_KEYUP:
+            if event.key in (SDLK_RIGHT, SDLK_DOWN, SDLK_LEFT, SDLK_UP):
+                self.state = 0
+                self.frame = 0
             
     def update(self):
-        if self.state == 1:
+        if self.state == 0:
+            self.frame = (self.frame + 1) % 6
+            delay(0.1)
+        elif self.state == 1:
             if self.dir == 0:
                 self.y += 5
             elif self.dir == 2:
@@ -38,11 +49,14 @@ class Player:
             elif self.dir == 6:
                 self.x -= 5
             self.frame = (self.frame + 1) % 10
+            delay(0.03)
             
     def draw(self):
         if self.state == 0:
-            self.Idle_Animation.clip_draw(0, self.dir*100, 100, 100, self.x, self.y)
-            
+            if self.dir < 5:
+                self.Idle_Animation.clip_draw(self.frame*100, self.dir*100, 100, 100, self.x, self.y)
+            else:
+                self.Idle_Animation.clip_composite_draw(self.frame*100, (self.dir-5)*100, 100, 100, math.radians(180), 'v', self.x, self.y)
         elif self.state == 1:
             if self.dir < 5:
                 self.Player_Run.clip_draw(self.frame*100, self.dir*100, 100, 100, self.x, self.y)
