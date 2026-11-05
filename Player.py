@@ -17,6 +17,7 @@ class player:
         self._attack_key_down = False
         self.attack_combo = 0
         self.Normal_Attack = load_image('asset/attack_sheet.png')
+        self.Attack_Trail = load_image('asset/attack_trail.png')
         self.Idle_Animation = load_image('asset/Player_Idle.png')
         self.Player_Run = load_image('asset/Run.png')
         self.dir = 0 # 0 up, 1 up-right, 2 right, 3 down-right, 4 down, 5 down-left, 6 left, 7 up-left
@@ -113,9 +114,13 @@ class player:
                 if self.dir in (5, 6, 7):
                     self.Normal_Attack.clip_composite_draw(
                         self.frame*100, self.attack_combo*100, 100, 100, 0, 'h', self.x, self.y)
+                    self.Attack_Trail.clip_composite_draw(
+                        self.frame*180, self.attack_combo*100, 180, 100, 0, 'h', self.x, self.y)
                 else:
                     self.Normal_Attack.clip_draw(
                         self.frame*100, self.attack_combo*100, 100, 100, self.x, self.y)
+                    self.Attack_Trail.clip_draw(
+                        self.frame*180, self.attack_combo*100, 180, 100, self.x, self.y)
         
         elif self.dir < 5:
             animation.clip_draw(self.frame*100, self.dir*100, 100, 100, self.x, self.y)
