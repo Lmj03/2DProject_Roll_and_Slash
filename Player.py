@@ -15,6 +15,7 @@ class player:
         self.frame = 0
         self._attack_frames_played = 0
         self._attack_key_down = False
+        self.attack_combo = 0
         self.Normal_Attack = load_image('asset/attack_sheet.png')
         self.Idle_Animation = load_image('asset/Player_Idle.png')
         self.Player_Run = load_image('asset/Run.png')
@@ -93,6 +94,7 @@ class player:
             if self._attack_frames_played >= 10:
                 self.stop_attack()
                 self._sync_movement()
+                self.attack_combo = (self.attack_combo + 1) % 3
             else:
                 self.frame = self._attack_frames_played
                 self._attack_frames_played += 1
@@ -110,14 +112,13 @@ class player:
         if self.state == 'ATTACK':
                 if self.dir in (5, 6, 7):
                     self.Normal_Attack.clip_composite_draw(
-                        self.frame*100, 0, 100, 100, 0, 'h', self.x, self.y)
+                        self.frame*100, self.attack_combo*100, 100, 100, 0, 'h', self.x, self.y)
                 else:
                     self.Normal_Attack.clip_draw(
-                        self.frame*100, 0, 100, 100, self.x, self.y)
+                        self.frame*100, self.attack_combo*100, 100, 100, self.x, self.y)
         
         elif self.dir < 5:
             animation.clip_draw(self.frame*100, self.dir*100, 100, 100, self.x, self.y)
         elif self.dir >= 5 and self.dir < 8:
             animation.clip_composite_draw(self.frame*100, (8-self.dir)*100, 
                                           100, 100, 0, 'h', self.x, self.y)
-        
