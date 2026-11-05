@@ -157,7 +157,7 @@ def Idle_Animation(counts, frame):
 
 open_canvas()
 load_images()
-Animaiton_viewer()
+#Animaiton_viewer()
 #Run_Animation_viewer()
-# Attack_Animation_viewer()
+Attack_Animation_viewer()
 # Idle_Animation_viewer()
