@@ -25,7 +25,7 @@ def load_images():
     sword_dice_roll = load_image('asset/Sword_Dice_Roll.png')
     sword_dice = load_image('asset/Sword_Dice.png')
     runs = load_image('asset/Run.png')
-    normal_attack = load_image('asset/attack_sheet.png')
+    normal_attack = load_image('asset/attack_sheet1.png')
     idle_animation = load_image('asset/Player_Idle.png')
     trail = load_image('asset/attack_trail.png')
     
