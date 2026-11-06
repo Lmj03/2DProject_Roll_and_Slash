@@ -3,7 +3,7 @@ import Player
 import key_handle_events
 
 def main():
-    open_canvas()
+    open_canvas(1400, 600)
     player = Player.player()
     
     while key_handle_events.running:
