@@ -1,6 +1,7 @@
 from pico2d import *
 counts = 0
 frame = 0
+sheet = 0
 running = True
 def handle_events():
     global running
@@ -13,7 +14,7 @@ def handle_events():
 
 def load_images():
     global move_dice_roll, move_dice, attack_dice_roll, attack_dice, defense_dice_roll, defense_dice, critical_dice_roll, critical_dice, sword_dice_roll, sword_dice
-    global runs, normal_attack, idle_animation, trail
+    global runs, normal_attack, idle_animation, trail, attack_down, attack_up, attack_down_trail, attack_up_trail
     move_dice_roll = load_image('asset/Move_Dice_Roll.png')
     move_dice = load_image('asset/Move_Dice.png')
     attack_dice_roll = load_image('asset/Attack_Dice_Roll.png')
@@ -25,9 +26,13 @@ def load_images():
     sword_dice_roll = load_image('asset/Sword_Dice_Roll.png')
     sword_dice = load_image('asset/Sword_Dice.png')
     runs = load_image('asset/Run.png')
-    normal_attack = load_image('asset/attack_sheet1.png')
+    normal_attack = load_image('asset/attack_sheet.png')
     idle_animation = load_image('asset/Player_Idle.png')
     trail = load_image('asset/attack_trail.png')
+    attack_up = load_image('asset/attack_up.png')
+    attack_down = load_image('asset/attack_down.png')
+    attack_up_trail = load_image('asset/attack_up_trail.png')
+    attack_down_trail = load_image('asset/attack_down_trail.png')
     
 def Animaiton_viewer():
     global counts, frame
@@ -118,7 +123,7 @@ def run(counts, frame):
         runs.clip_composite_draw(frame*100, (counts-5)*100, 100, 100, math.radians(180), 'v', 400, 300)
 
 def Attack_Animation_viewer():
-    global counts, frame
+    global counts, frame, sheet
     while running:
         handle_events()
         if running == False:
@@ -130,13 +135,25 @@ def Attack_Animation_viewer():
         delay(0.04)
         if frame == 10:
             counts += 1
-            if counts == 3: counts = 0
+            if counts == 3: 
+                counts = 0
+                sheet += 1
+                if sheet == 3:
+                    sheet = 0
             frame = 0
             delay(0.3)
     
 def normal_Attack(counts, frame):
-    normal_attack.clip_draw(frame*100, counts*100, 100, 100, 400, 300)
-    trail.clip_draw(frame*180, counts*100, 180, 100, 400, 300)
+    if sheet == 0:
+        normal_attack.clip_draw(frame*100, counts*100, 100, 100, 400, 300)
+        trail.clip_draw(frame*180, counts*100, 180, 100, 400, 300)
+    elif sheet == 1:
+        attack_up.clip_draw(frame*100, counts*100, 100, 100, 400, 300)
+        attack_up_trail.clip_draw(frame*100, counts*180, 100, 180, 400, 300)
+    elif sheet == 2:
+        attack_down.clip_draw(frame*100, counts*100, 100, 100, 400, 300)
+        attack_down_trail.clip_draw(frame*100, counts*180, 100, 180, 400, 300)
+    
 
 def Idle_Animation_viewer():
     global counts, frame
