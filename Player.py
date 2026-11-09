@@ -1,3 +1,5 @@
+from math import sqrt
+
 from pico2d import *
 from transitions import Machine
 
@@ -10,6 +12,7 @@ class player:
         SDLK_LEFT: LEFT,
     }
     ANIMATION_ROWS = {UP: 0, RIGHT: 2, DOWN: 4, LEFT: 2}
+    MOVE_SPEED = 6
 
     def __init__(self):
         self.x = 400
@@ -28,6 +31,8 @@ class player:
         self.Player_Run = load_image('asset/Run.png')
         self.dir = self.UP
         self.pressed_keys = []
+        self.move_x = 0
+        self.move_y = 0
         self.machine = Machine(
             model=self,
             states=['IDLE', 'RUN','ATTACK'],
@@ -74,7 +79,9 @@ class player:
         self._sync_movement()
 
     def _sync_movement(self):
-        if self.pressed_keys:
+        self.move_x = (SDLK_RIGHT in self.pressed_keys) - (SDLK_LEFT in self.pressed_keys)
+        self.move_y = (SDLK_UP in self.pressed_keys) - (SDLK_DOWN in self.pressed_keys)
+        if self.move_x or self.move_y:
             self.dir = self.KEY_INPUTS[self.pressed_keys[-1]]
             if self.state == 'IDLE':
                 self.start_running()
@@ -86,14 +93,9 @@ class player:
             self.frame = (self.frame + 1) % 6
             delay(0.1)
         elif self.state == 'RUN':
-            if self.dir == self.UP:
-                self.y += 6
-            elif self.dir == self.RIGHT:
-                self.x += 6
-            elif self.dir == self.DOWN:
-                self.y -= 6
-            elif self.dir == self.LEFT:
-                self.x -= 6
+            step = self.MOVE_SPEED / sqrt(2) if self.move_x and self.move_y else self.MOVE_SPEED
+            self.x += self.move_x * step
+            self.y += self.move_y * step
             self.frame = (self.frame + 1) % 10
             delay(0.02)
         elif self.state == 'ATTACK':
