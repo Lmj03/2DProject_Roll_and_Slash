@@ -5,12 +5,7 @@ from transitions import Machine
 
 class player:
     UP, RIGHT, DOWN, LEFT = range(4)
-    KEY_INPUTS = {
-        SDLK_UP: UP,
-        SDLK_RIGHT: RIGHT,
-        SDLK_DOWN: DOWN,
-        SDLK_LEFT: LEFT,
-    }
+    KEY_INPUTS = {SDLK_UP, SDLK_RIGHT, SDLK_DOWN, SDLK_LEFT}
     ANIMATION_ROWS = {UP: 0, RIGHT: 2, DOWN: 4, LEFT: 2}
     MOVE_SPEED = 6
 
@@ -30,7 +25,7 @@ class player:
         self.Idle_Animation = load_image('asset/Player_Idle.png')
         self.Player_Run = load_image('asset/Run.png')
         self.dir = self.UP
-        self.pressed_keys = []
+        self.pressed_keys = set()
         self.move_x = 0
         self.move_y = 0
         self.machine = Machine(
@@ -69,10 +64,9 @@ class player:
             return
         
         if event.type == SDL_KEYDOWN:
-            if event.key not in self.pressed_keys:
-                self.pressed_keys.append(event.key)
-        elif event.key in self.pressed_keys:
-            self.pressed_keys.remove(event.key)
+            self.pressed_keys.add(event.key)
+        else:
+            self.pressed_keys.discard(event.key)
 
         if self.state == 'ATTACK':
             return
@@ -82,7 +76,10 @@ class player:
         self.move_x = (SDLK_RIGHT in self.pressed_keys) - (SDLK_LEFT in self.pressed_keys)
         self.move_y = (SDLK_UP in self.pressed_keys) - (SDLK_DOWN in self.pressed_keys)
         if self.move_x or self.move_y:
-            self.dir = self.KEY_INPUTS[self.pressed_keys[-1]]
+            if self.move_x:
+                self.dir = self.RIGHT if self.move_x > 0 else self.LEFT
+            else:
+                self.dir = self.UP if self.move_y > 0 else self.DOWN
             if self.state == 'IDLE':
                 self.start_running()
         elif self.state == 'RUN':
