@@ -1,9 +1,11 @@
 from pico2d import *
+import game_world
 import Player
 import key_handle_events
 
 CANVAS_WIDTH, CANVAS_HEIGHT = 1500, 700
 FOOT_RADIUS = 9
+ANVIL_FOOTPRINT = (307, 431, 30, 19)
 
 # Collision shapes use the lobby image's top-left coordinate system.
 COURTYARD = (
@@ -21,7 +23,7 @@ FORGE_WALLS = (
 # Center x, center y, horizontal radius, vertical radius.
 SOLID_ELLIPSES = (
     (1095, 384, 149, 94),  # Well
-    (307, 431, 30, 19),    # Anvil stand
+    ANVIL_FOOTPRINT,       # Anvil stand
     (197, 485, 18, 24),    # Barrel by the forge entrance
 )
 
@@ -57,24 +59,54 @@ def can_walk_in_lobby(x, foot_y):
     )
 
 
+class LobbySprite:
+    def __init__(self, name, left, top):
+        self.image = load_image(f'asset/lobby_layers/{name}.png')
+        self.x = left + self.image.w / 2
+        self.y = CANVAS_HEIGHT - top - self.image.h / 2
+
+    def draw(self):
+        self.image.draw(self.x, self.y)
+
+
+def create_lobby_world(player):
+    world = game_world.GameWorld()
+    world.add(LobbySprite('lobby_background', 0, 0), game_world.BACKGROUND)
+    world.add(LobbySprite('forge_floor', 0, 156), game_world.BACKGROUND)
+
+    # Sprite offsets use image coordinates. Depth uses the footprint in world coordinates.
+    forge_objects = (
+        ('forge_pillar_left', 105, 272, 507),
+        ('forge_pillar_right', 357, 192, 387),
+        ('forge_anvil', 271, 358, ANVIL_FOOTPRINT[1]),
+    )
+    for name, left, top, depth in forge_objects:
+        world.add(LobbySprite(name, left, top), game_world.OBJECTS,
+                  foot_y=lambda depth=depth: CANVAS_HEIGHT - depth)
+    world.add(player, game_world.OBJECTS, foot_y=lambda: player.y - player.FOOT_OFFSET_Y)
+
+    world.add(LobbySprite('forge_roof', 0, 0), game_world.FOREGROUND)
+    return world
+
+
 def main():
     open_canvas(CANVAS_WIDTH, CANVAS_HEIGHT)
-    lobby = load_image('asset/lobby.png')
     player = Player.player()
     player.x, player.y = CANVAS_WIDTH // 2, 150
-    
+    world = create_lobby_world(player)
+
     while key_handle_events.running:
         key_handle_events.handle_events(player)
         if not key_handle_events.running:
             break
 
         clear_canvas()
-        lobby.draw(CANVAS_WIDTH // 2, CANVAS_HEIGHT // 2)
         player.update(can_walk_in_lobby)
-        player.draw()
+        world.draw()
         update_canvas()
 
     close_canvas()
+
 
 if __name__ == "__main__":
     main()
