@@ -10,6 +10,33 @@ class player:
     MOVE_SPEED = 6
     DRAW_SCALE = 1.2
     FOOT_OFFSET_Y = 36  # Distance below the center of an unscaled sprite.
+    # (x offset, depth below cell center) in original sprite pixels, indexed by combo and frame.
+    ATTACK_SHADOW_CONTACTS = {
+        RIGHT: (
+            ((-6, 34), (-10, 34), (-8, 32), (-15, 34), (-7, 32),
+             (-11, 34), (-8, 34), (-7, 32), (-4, 32), (-2, 32)),
+            ((-10, 28), (-4, 30), (-2, 30), (-2, 30), (2, 30),
+             (6, 32), (6, 30), (6, 30), (5, 32), (7, 32)),
+            ((-4, 30), (-17, 32), (-14, 36), (-10, 36), (-8, 38),
+             (-4, 40), (-8, 32), (-8, 20), (-8, 22), (-12, 22)),
+        ),
+        UP: (
+            ((3, 36), (-2, 36), (1, 36), (4, 36), (6, 44),
+             (10, 42), (-9, 38), (-6, 36), (-1, 36), (2, 36)),
+            ((-13, 36), (-5, 38), (-2, 36), (-2, 36), (5, 36),
+             (6, 46), (8, 46), (6, 44), (8, 44), (4, 44)),
+            ((3, 36), (1, 36), (3, 36), (1, 44), (3, 44),
+             (3, 44), (5, 44), (-4, 36), (-13, 36), (-11, 36)),
+        ),
+        DOWN: (
+            ((2, 38), (4, 38), (4, 38), (3, 38), (4, 38),
+             (4, 38), (5, 38), (5, 38), (5, 38), (5, 38)),
+            ((2, 38), (1, 38), (5, 36), (4, 36), (4, 38),
+             (4, 38), (3, 36), (4, 46), (4, 46), (5, 46)),
+            ((-3, 36), (-4, 36), (-2, 38), (-3, 44), (-4, 44),
+             (-4, 46), (-1, 40), (1, 32), (3, 34), (4, 32)),
+        ),
+    }
 
     def __init__(self):
         self.x = 400
@@ -88,14 +115,18 @@ class player:
         elif self.state == 'RUN':
             self.stop_running()
             
-    def update(self):
+    def update(self, can_move=None):
         if self.state == 'IDLE':
             self.frame = (self.frame + 1) % 6
             delay(0.1)
         elif self.state == 'RUN':
             step = self.MOVE_SPEED / sqrt(2) if self.move_x and self.move_y else self.MOVE_SPEED
-            self.x += self.move_x * step
-            self.y += self.move_y * step
+            next_x = self.x + self.move_x * step
+            next_y = self.y + self.move_y * step
+            if can_move is None or can_move(next_x, self.y - self.FOOT_OFFSET_Y):
+                self.x = next_x
+            if can_move is None or can_move(self.x, next_y - self.FOOT_OFFSET_Y):
+                self.y = next_y
             self.frame = (self.frame + 1) % 10
             delay(0.02)
         elif self.state == 'ATTACK':
@@ -109,13 +140,25 @@ class player:
                 delay(0.05)
             
     def draw(self):
-        self.shadow.draw(self.x, self.y - self.FOOT_OFFSET_Y, 54, 8)
+        self._draw_shadow()
         if self.state == 'IDLE':
             self._draw_frame(self.Idle_Animation, self.ANIMATION_ROWS[self.dir])
         elif self.state == 'RUN':
             self._draw_frame(self.Player_Run, self.ANIMATION_ROWS[self.dir])
         elif self.state == 'ATTACK':
             self._draw_attack()
+
+    def _draw_shadow(self):
+        x = self.x
+        y = self.y - self.FOOT_OFFSET_Y
+        if self.state == 'ATTACK':
+            direction = self.RIGHT if self.dir == self.LEFT else self.dir
+            offset_x, depth = self.ATTACK_SHADOW_CONTACTS[direction][self.attack_combo][self.frame]
+            if self.dir == self.LEFT:
+                offset_x = -offset_x
+            x += offset_x * self.DRAW_SCALE
+            y += (self.FOOT_OFFSET_Y - depth) * self.DRAW_SCALE
+        self.shadow.draw(x, y, 54, 8)
 
     def _draw_attack(self):
         if self.dir == self.UP:
