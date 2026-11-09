@@ -8,6 +8,8 @@ class player:
     KEY_INPUTS = {SDLK_UP, SDLK_RIGHT, SDLK_DOWN, SDLK_LEFT}
     ANIMATION_ROWS = {UP: 0, RIGHT: 2, DOWN: 4, LEFT: 2}
     MOVE_SPEED = 6
+    DRAW_SCALE = 1.2
+    FOOT_OFFSET_Y = 36  # Distance below the center of an unscaled sprite.
 
     def __init__(self):
         self.x = 400
@@ -16,6 +18,7 @@ class player:
         self._attack_frames_played = 0
         self._attack_key_down = False
         self.attack_combo = 0
+        self.shadow = load_image('asset/player_shadow.png')
         self.Normal_Attack = load_image('asset/attack_sheet.png')
         self.Attack_Trail = load_image('asset/attack_trail.png')
         self.Normal_Attack_Up = load_image('asset/attack_up.png')
@@ -106,38 +109,35 @@ class player:
                 delay(0.05)
             
     def draw(self):
+        self.shadow.draw(self.x, self.y - self.FOOT_OFFSET_Y, 54, 8)
         if self.state == 'IDLE':
-            self._draw_animation(self.Idle_Animation)
+            self._draw_frame(self.Idle_Animation, self.ANIMATION_ROWS[self.dir])
         elif self.state == 'RUN':
-            self._draw_animation(self.Player_Run)
+            self._draw_frame(self.Player_Run, self.ANIMATION_ROWS[self.dir])
         elif self.state == 'ATTACK':
-            self._draw_animation(self.Normal_Attack)
+            self._draw_attack()
 
-    def _draw_animation(self, animation):
-        if self.state == 'ATTACK':
-            if self.dir == self.LEFT:
-                self.Normal_Attack.clip_composite_draw(
-                    self.frame*100, self.attack_combo*100, 100, 100, 0, 'h', self.x, self.y)
-                self.Attack_Trail.clip_composite_draw(
-                    self.frame*180, self.attack_combo*100, 180, 100, 0, 'h', self.x, self.y)
-            elif self.dir == self.RIGHT:
-                self.Normal_Attack.clip_draw(
-                    self.frame*100, self.attack_combo*100, 100, 100, self.x, self.y)
-                self.Attack_Trail.clip_draw(
-                    self.frame*180, self.attack_combo*100, 180, 100, self.x, self.y)
-            elif self.dir == self.UP:
-                self.Normal_Attack_Up.clip_draw(
-                    self.frame*100, self.attack_combo*100, 100, 100, self.x, self.y)
-                self.Attack_Trail_Up.clip_draw(
-                    self.frame*100, self.attack_combo*180, 100, 180, self.x, self.y)
-            elif self.dir == self.DOWN:
-                self.Normal_Attack_Down.clip_draw(
-                    self.frame*100, self.attack_combo*100, 100, 100, self.x, self.y)
-                self.Attack_Trail_Down.clip_draw(
-                    self.frame*100, self.attack_combo*180, 100, 180, self.x, self.y)
+    def _draw_attack(self):
+        if self.dir == self.UP:
+            self._draw_frame(self.Normal_Attack_Up, self.attack_combo)
+            self._draw_frame(self.Attack_Trail_Up, self.attack_combo, cell_height=180)
+        elif self.dir == self.DOWN:
+            self._draw_frame(self.Normal_Attack_Down, self.attack_combo)
+            self._draw_frame(self.Attack_Trail_Down, self.attack_combo, cell_height=180)
         else:
-            bottom = self.ANIMATION_ROWS[self.dir] * 100
-            if self.dir == self.LEFT:
-                animation.clip_composite_draw(self.frame*100, bottom, 100, 100, 0, 'h', self.x, self.y)
-            else:
-                animation.clip_draw(self.frame*100, bottom, 100, 100, self.x, self.y)
+            self._draw_frame(self.Normal_Attack, self.attack_combo)
+            self._draw_frame(self.Attack_Trail, self.attack_combo, cell_width=180)
+
+    def _draw_frame(self, image, row, cell_width=100, cell_height=100):
+        left = self.frame * cell_width
+        bottom = row * cell_height
+        draw_width = round(cell_width * self.DRAW_SCALE)
+        draw_height = round(cell_height * self.DRAW_SCALE)
+        draw_y = self.y + self.FOOT_OFFSET_Y * (self.DRAW_SCALE - 1)
+
+        if self.dir == self.LEFT:
+            image.clip_composite_draw(
+                left, bottom, cell_width, cell_height, 0, 'h', self.x, draw_y, draw_width, draw_height)
+        else:
+            image.clip_draw(
+                left, bottom, cell_width, cell_height, self.x, draw_y, draw_width, draw_height)
