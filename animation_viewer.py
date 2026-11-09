@@ -15,7 +15,7 @@ def handle_events():
 def load_images():
     global move_dice_roll, move_dice, attack_dice_roll, attack_dice, defense_dice_roll, defense_dice, critical_dice_roll, critical_dice, sword_dice_roll, sword_dice
     global runs, normal_attack, idle_animation, trail, attack_down, attack_up, attack_down_trail, attack_up_trail, m1, m1_attack
-    global m1_attack_lrtrail, m1_attack_udtrail
+    global m1_attack_lrtrail, m1_attack_udtrail, m2
     move_dice_roll = load_image('asset/Move_Dice_Roll.png')
     move_dice = load_image('asset/Move_Dice.png')
     attack_dice_roll = load_image('asset/Attack_Dice_Roll.png')
@@ -38,6 +38,7 @@ def load_images():
     m1_attack = load_image('asset/m1_attack.png')
     m1_attack_lrtrail = load_image('asset/m1_attack_lrtrail.png')
     m1_attack_udtrail = load_image('asset/m1_attack_udtrail.png')
+    m2 = load_image('asset/m2.png')
     
 def Animaiton_viewer():
     global counts, frame
@@ -218,6 +219,23 @@ def Idle_Animation_viewer():
 def Idle_Animation(counts, frame):
     idle_animation.clip_draw(frame*100, counts*100, 100, 100, 400, 300)
 
+def show_m2():
+    global counts, frame
+    while running:
+        handle_events()
+        if running == False:
+            break
+        clear_canvas()
+        m2.clip_draw(frame*150, counts*150, 150, 150, 400, 300)
+        update_canvas()
+        frame += 1
+        delay(0.1)
+        if frame == 6:
+            counts += 1
+            if counts == 4: 
+                counts = 0
+            frame = 0
+            delay(0.3)
 open_canvas()
 load_images()
 #Animaiton_viewer()
@@ -225,4 +243,5 @@ load_images()
 # Attack_Animation_viewer()
 # Idle_Animation_viewer()
 # show_m1()
-show_m1_attack()
+# show_m1_attack()
+show_m2()
