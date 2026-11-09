@@ -2,12 +2,14 @@ from pico2d import *
 from transitions import Machine
 
 class player:
+    UP, RIGHT, DOWN, LEFT = range(4)
     KEY_INPUTS = {
-        SDLK_UP: 0,
-        SDLK_RIGHT: 2,
-        SDLK_DOWN: 4,
-        SDLK_LEFT: 6
+        SDLK_UP: UP,
+        SDLK_RIGHT: RIGHT,
+        SDLK_DOWN: DOWN,
+        SDLK_LEFT: LEFT,
     }
+    ANIMATION_ROWS = {UP: 0, RIGHT: 2, DOWN: 4, LEFT: 2}
 
     def __init__(self):
         self.x = 400
@@ -24,7 +26,7 @@ class player:
         self.Attack_Trail_Down = load_image('asset/attack_down_trail.png')
         self.Idle_Animation = load_image('asset/Player_Idle.png')
         self.Player_Run = load_image('asset/Run.png')
-        self.dir = 0 # 0 up, 1 up-right, 2 right, 3 down-right, 4 down, 5 down-left, 6 left, 7 up-left
+        self.dir = self.UP
         self.pressed_keys = []
         self.machine = Machine(
             model=self,
@@ -84,13 +86,13 @@ class player:
             self.frame = (self.frame + 1) % 6
             delay(0.1)
         elif self.state == 'RUN':
-            if self.dir == 0:
+            if self.dir == self.UP:
                 self.y += 6
-            elif self.dir == 2:
+            elif self.dir == self.RIGHT:
                 self.x += 6
-            elif self.dir == 4:
+            elif self.dir == self.DOWN:
                 self.y -= 6
-            elif self.dir == 6:
+            elif self.dir == self.LEFT:
                 self.x -= 6
             self.frame = (self.frame + 1) % 10
             delay(0.02)
@@ -114,29 +116,29 @@ class player:
 
     def _draw_animation(self, animation):
         if self.state == 'ATTACK':
-                if self.dir in (5, 6, 7):
-                    self.Normal_Attack.clip_composite_draw(
-                        self.frame*100, self.attack_combo*100, 100, 100, 0, 'h', self.x, self.y)
-                    self.Attack_Trail.clip_composite_draw(
-                        self.frame*180, self.attack_combo*100, 180, 100, 0, 'h', self.x, self.y)
-                elif self.dir in (2, 3):
-                    self.Normal_Attack.clip_draw(
-                        self.frame*100, self.attack_combo*100, 100, 100, self.x, self.y)
-                    self.Attack_Trail.clip_draw(
-                        self.frame*180, self.attack_combo*100, 180, 100, self.x, self.y)
-                elif self.dir == 0:
-                    self.Normal_Attack_Up.clip_draw(
-                        self.frame*100, self.attack_combo*100, 100, 100, self.x, self.y)
-                    self.Attack_Trail_Up.clip_draw(
-                        self.frame*100, self.attack_combo*180, 100, 180, self.x, self.y)
-                elif self.dir == 4:
-                    self.Normal_Attack_Down.clip_draw(
-                        self.frame*100, self.attack_combo*100, 100, 100, self.x, self.y)
-                    self.Attack_Trail_Down.clip_draw(
-                        self.frame*100, self.attack_combo*180, 100, 180, self.x, self.y)
-        
-        elif self.dir < 5:
-            animation.clip_draw(self.frame*100, self.dir*100, 100, 100, self.x, self.y)
-        elif self.dir >= 5 and self.dir < 8:
-            animation.clip_composite_draw(self.frame*100, (8-self.dir)*100, 
-                                          100, 100, 0, 'h', self.x, self.y)
+            if self.dir == self.LEFT:
+                self.Normal_Attack.clip_composite_draw(
+                    self.frame*100, self.attack_combo*100, 100, 100, 0, 'h', self.x, self.y)
+                self.Attack_Trail.clip_composite_draw(
+                    self.frame*180, self.attack_combo*100, 180, 100, 0, 'h', self.x, self.y)
+            elif self.dir == self.RIGHT:
+                self.Normal_Attack.clip_draw(
+                    self.frame*100, self.attack_combo*100, 100, 100, self.x, self.y)
+                self.Attack_Trail.clip_draw(
+                    self.frame*180, self.attack_combo*100, 180, 100, self.x, self.y)
+            elif self.dir == self.UP:
+                self.Normal_Attack_Up.clip_draw(
+                    self.frame*100, self.attack_combo*100, 100, 100, self.x, self.y)
+                self.Attack_Trail_Up.clip_draw(
+                    self.frame*100, self.attack_combo*180, 100, 180, self.x, self.y)
+            elif self.dir == self.DOWN:
+                self.Normal_Attack_Down.clip_draw(
+                    self.frame*100, self.attack_combo*100, 100, 100, self.x, self.y)
+                self.Attack_Trail_Down.clip_draw(
+                    self.frame*100, self.attack_combo*180, 100, 180, self.x, self.y)
+        else:
+            bottom = self.ANIMATION_ROWS[self.dir] * 100
+            if self.dir == self.LEFT:
+                animation.clip_composite_draw(self.frame*100, bottom, 100, 100, 0, 'h', self.x, self.y)
+            else:
+                animation.clip_draw(self.frame*100, bottom, 100, 100, self.x, self.y)
