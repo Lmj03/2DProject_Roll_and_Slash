@@ -14,7 +14,8 @@ def handle_events():
 
 def load_images():
     global move_dice_roll, move_dice, attack_dice_roll, attack_dice, defense_dice_roll, defense_dice, critical_dice_roll, critical_dice, sword_dice_roll, sword_dice
-    global runs, normal_attack, idle_animation, trail, attack_down, attack_up, attack_down_trail, attack_up_trail
+    global runs, normal_attack, idle_animation, trail, attack_down, attack_up, attack_down_trail, attack_up_trail, m1, m1_attack
+    global m1_attack_lrtrail, m1_attack_udtrail
     move_dice_roll = load_image('asset/Move_Dice_Roll.png')
     move_dice = load_image('asset/Move_Dice.png')
     attack_dice_roll = load_image('asset/Attack_Dice_Roll.png')
@@ -33,6 +34,10 @@ def load_images():
     attack_down = load_image('asset/attack_down.png')
     attack_up_trail = load_image('asset/attack_up_trail.png')
     attack_down_trail = load_image('asset/attack_down_trail.png')
+    m1 = load_image('asset/m1.png')
+    m1_attack = load_image('asset/m1_attack.png')
+    m1_attack_lrtrail = load_image('asset/m1_attack_lrtrail.png')
+    m1_attack_udtrail = load_image('asset/m1_attack_udtrail.png')
     
 def Animaiton_viewer():
     global counts, frame
@@ -153,7 +158,45 @@ def normal_Attack(counts, frame):
     elif sheet == 2:
         attack_down.clip_draw(frame*100, counts*100, 100, 100, 400, 300)
         attack_down_trail.clip_draw(frame*100, counts*180, 100, 180, 400, 300)
-    
+
+def show_m1():
+    global counts, frame
+    while running:
+        handle_events()
+        if running == False:
+            break
+        clear_canvas()
+        m1.clip_draw(frame*100, counts*100, 100, 100, 400, 300)
+        update_canvas()
+        frame += 1
+        delay(0.1)
+        if frame == 6:
+            counts += 1
+            if counts == 4: 
+                counts = 0
+            frame = 0
+            delay(0.3)
+def show_m1_attack():
+    global counts, frame
+    while running:
+        handle_events()
+        if running == False:
+            break
+        clear_canvas()
+        m1_attack.clip_draw(frame*100, counts*100, 100, 100, 400, 300)
+        if(counts < 2):
+            m1_attack_udtrail.clip_draw(frame*100, counts*180, 100, 180, 400, 300)
+        else:
+            m1_attack_lrtrail.clip_draw(frame*180, (counts-2)*100, 180, 100, 400, 300)
+        update_canvas()
+        frame += 1
+        delay(0.1)
+        if frame == 6:
+            counts += 1
+            if counts == 4: 
+                counts = 0
+            frame = 0
+            delay(0.3)
 
 def Idle_Animation_viewer():
     global counts, frame
@@ -179,5 +222,7 @@ open_canvas()
 load_images()
 #Animaiton_viewer()
 #Run_Animation_viewer()
-Attack_Animation_viewer()
+# Attack_Animation_viewer()
 # Idle_Animation_viewer()
+# show_m1()
+show_m1_attack()
