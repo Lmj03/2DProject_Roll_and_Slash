@@ -1,4 +1,6 @@
 from pico2d import *
+
+from Player import DOWN_ATTACK_WIDTH_SCALE
 counts = 0
 frame = 0
 sheet = 0
@@ -157,8 +159,9 @@ def normal_Attack(counts, frame):
         attack_up.clip_draw(frame*100, counts*100, 100, 100, 400, 300)
         attack_up_trail.clip_draw(frame*100, counts*180, 100, 180, 400, 300)
     elif sheet == 2:
-        attack_down.clip_draw(frame*100, counts*100, 100, 100, 400, 300)
-        attack_down_trail.clip_draw(frame*100, counts*180, 100, 180, 400, 300)
+        width = round(100 * DOWN_ATTACK_WIDTH_SCALE)
+        attack_down.clip_draw(frame*100, counts*100, 100, 100, 400, 300, width, 100)
+        attack_down_trail.clip_draw(frame*100, counts*180, 100, 180, 400, 300, width, 180)
 
 def show_m1():
     global counts, frame

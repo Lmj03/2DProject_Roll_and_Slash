@@ -3,6 +3,9 @@ from math import sqrt
 from pico2d import *
 from transitions import Machine
 
+# Down attack poses are wider than the matching idle and run sprites.
+DOWN_ATTACK_WIDTH_SCALE = 0.86
+
 class player:
     UP, RIGHT, DOWN, LEFT = range(4)
     KEY_INPUTS = {SDLK_UP, SDLK_RIGHT, SDLK_DOWN, SDLK_LEFT}
@@ -64,8 +67,7 @@ class player:
             transitions=[
                 {'trigger': 'start_running', 'source': 'IDLE', 'dest': 'RUN'},
                 {'trigger': 'stop_running', 'source': 'RUN', 'dest': 'IDLE'},
-                {'trigger': 'start_attack', 'source': 'IDLE', 'dest': 'ATTACK'},
-                {'trigger': 'start_attack', 'source': 'RUN', 'dest': 'ATTACK'},
+                {'trigger': 'start_attack', 'source': ['IDLE', 'RUN'], 'dest': 'ATTACK'},
                 {'trigger': 'stop_attack', 'source': 'ATTACK', 'dest': 'IDLE'},
             ],
             initial='IDLE',
@@ -156,6 +158,8 @@ class player:
             offset_x, depth = self.ATTACK_SHADOW_CONTACTS[direction][self.attack_combo][self.frame]
             if self.dir == self.LEFT:
                 offset_x = -offset_x
+            elif direction == self.DOWN:
+                offset_x *= DOWN_ATTACK_WIDTH_SCALE
             x += offset_x * self.DRAW_SCALE
             y += (self.FOOT_OFFSET_Y - depth) * self.DRAW_SCALE
         self.shadow.draw(x, y, 54, 8)
@@ -165,16 +169,18 @@ class player:
             self._draw_frame(self.Normal_Attack_Up, self.attack_combo)
             self._draw_frame(self.Attack_Trail_Up, self.attack_combo, cell_height=180)
         elif self.dir == self.DOWN:
-            self._draw_frame(self.Normal_Attack_Down, self.attack_combo)
-            self._draw_frame(self.Attack_Trail_Down, self.attack_combo, cell_height=180)
+            self._draw_frame(self.Normal_Attack_Down, self.attack_combo,
+                             width_scale=DOWN_ATTACK_WIDTH_SCALE)
+            self._draw_frame(self.Attack_Trail_Down, self.attack_combo, cell_height=180,
+                             width_scale=DOWN_ATTACK_WIDTH_SCALE)
         else:
             self._draw_frame(self.Normal_Attack, self.attack_combo)
             self._draw_frame(self.Attack_Trail, self.attack_combo, cell_width=180)
 
-    def _draw_frame(self, image, row, cell_width=100, cell_height=100):
+    def _draw_frame(self, image, row, cell_width=100, cell_height=100, *, width_scale=1):
         left = self.frame * cell_width
         bottom = row * cell_height
-        draw_width = round(cell_width * self.DRAW_SCALE)
+        draw_width = round(cell_width * self.DRAW_SCALE * width_scale)
         draw_height = round(cell_height * self.DRAW_SCALE)
         draw_y = self.y + self.FOOT_OFFSET_Y * (self.DRAW_SCALE - 1)
 
