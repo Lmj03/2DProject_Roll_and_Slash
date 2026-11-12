@@ -1,4 +1,4 @@
-from math import sqrt
+from math import ceil, sqrt
 
 from pico2d import *
 from transitions import Machine
@@ -10,7 +10,12 @@ class player:
     UP, RIGHT, DOWN, LEFT = range(4)
     KEY_INPUTS = {SDLK_UP, SDLK_RIGHT, SDLK_DOWN, SDLK_LEFT}
     ANIMATION_ROWS = {UP: 0, RIGHT: 2, DOWN: 4, LEFT: 2}
-    MOVE_SPEED = 6
+    MOVE_SPEED = 300.0  # Pixels per second, formerly 6 pixels every 0.02 seconds.
+    MAX_MOVE_STEP = 6.0
+    IDLE_FRAME_TIME = 0.1
+    RUN_FRAME_TIME = 0.02
+    ATTACK_FRAME_TIME = 0.05
+    ANIMATION_EPSILON = 1e-9  # Tolerance for floating-point frame boundaries.
     DRAW_SCALE = 1.2
     FOOT_OFFSET_Y = 36  # Distance below the center of an unscaled sprite.
     # (x offset, depth below cell center) in original sprite pixels, indexed by combo and frame.
@@ -45,7 +50,7 @@ class player:
         self.x = 400
         self.y = 300
         self.frame = 0
-        self._attack_frames_played = 0
+        self._animation_time = 0.0
         self._attack_key_down = False
         self.attack_combo = 0
         self.shadow = load_image('asset/player_shadow.png')
@@ -77,7 +82,7 @@ class player:
 
     def _reset_animation(self):
         self.frame = 0
-        self._attack_frames_played = 0
+        self._animation_time = 0.0
         
     def handle_events(self, event):
         if event.type not in (SDL_KEYDOWN, SDL_KEYUP):
@@ -117,29 +122,52 @@ class player:
         elif self.state == 'RUN':
             self.stop_running()
             
-    def update(self, can_move=None):
-        if self.state == 'IDLE':
-            self.frame = (self.frame + 1) % 6
-            delay(0.1)
-        elif self.state == 'RUN':
-            step = self.MOVE_SPEED / sqrt(2) if self.move_x and self.move_y else self.MOVE_SPEED
+    def update(self, delta_time, can_move=None):
+        if delta_time <= 0:
+            return
+
+        self._animation_time += delta_time
+        if self.state == 'ATTACK':
+            duration = self.ATTACK_FRAME_TIME * 10
+            if self._animation_time < duration - self.ANIMATION_EPSILON:
+                self.frame = int((self._animation_time + self.ANIMATION_EPSILON)
+                                 / self.ATTACK_FRAME_TIME)
+                return
+
+            # Use the rest of this frame after the attack for idle or resumed movement.
+            delta_time = max(0.0, self._animation_time - duration)
+            self.stop_attack()
+            self._sync_movement()
+            self.attack_combo = (self.attack_combo + 1) % 3
+            self._animation_time = delta_time
+
+        if self.state == 'RUN':
+            self._move(delta_time, can_move)
+            frame_time, frame_count = self.RUN_FRAME_TIME, 10
+        else:
+            frame_time, frame_count = self.IDLE_FRAME_TIME, 6
+
+        self._animation_time %= frame_time * frame_count
+        self.frame = int((self._animation_time + self.ANIMATION_EPSILON) / frame_time) % frame_count
+
+    def _move(self, delta_time, can_move):
+        distance = self.MOVE_SPEED * delta_time
+        # Test the whole path in small steps so a slow frame cannot skip a wall.
+        steps = max(1, ceil(distance / self.MAX_MOVE_STEP))
+        step = distance / steps
+        if self.move_x and self.move_y:
+            step /= sqrt(2)
+
+        for _ in range(steps):
+            old_x, old_y = self.x, self.y
             next_x = self.x + self.move_x * step
             next_y = self.y + self.move_y * step
             if can_move is None or can_move(next_x, self.y - self.FOOT_OFFSET_Y):
                 self.x = next_x
             if can_move is None or can_move(self.x, next_y - self.FOOT_OFFSET_Y):
                 self.y = next_y
-            self.frame = (self.frame + 1) % 10
-            delay(0.02)
-        elif self.state == 'ATTACK':
-            if self._attack_frames_played >= 10:
-                self.stop_attack()
-                self._sync_movement()
-                self.attack_combo = (self.attack_combo + 1) % 3
-            else:
-                self.frame = self._attack_frames_played
-                self._attack_frames_played += 1
-                delay(0.05)
+            if self.x == old_x and self.y == old_y:
+                break
             
     def draw(self):
         self._draw_shadow()

@@ -1,3 +1,5 @@
+import time
+
 from pico2d import *
 import game_world
 import Player
@@ -5,6 +7,7 @@ import key_handle_events
 
 CANVAS_WIDTH, CANVAS_HEIGHT = 1500, 700
 FOOT_RADIUS = 9
+TARGET_FPS = 60
 ANVIL_FOOTPRINT = (307, 431, 30, 19)
 
 # Collision shapes use the lobby image's top-left coordinate system.
@@ -94,16 +97,26 @@ def main():
     player = Player.player()
     player.x, player.y = CANVAS_WIDTH // 2, 150
     world = create_lobby_world(player)
+    previous_time = time.perf_counter()
 
     while key_handle_events.running:
+        frame_start = time.perf_counter()
+        delta_time = frame_start - previous_time
+        previous_time = frame_start
+
         key_handle_events.handle_events(player)
         if not key_handle_events.running:
             break
 
+        player.update(delta_time, can_walk_in_lobby)
         clear_canvas()
-        player.update(can_walk_in_lobby)
         world.draw()
         update_canvas()
+
+        # Pace rendering while the next delta includes both work and sleep time.
+        remaining_time = 1.0 / TARGET_FPS - (time.perf_counter() - frame_start)
+        if remaining_time > 0:
+            time.sleep(remaining_time)
 
     close_canvas()
 
