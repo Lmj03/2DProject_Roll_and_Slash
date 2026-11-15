@@ -49,6 +49,11 @@ class player:
     def __init__(self):
         self.max_hp = 100
         self.hp = self.max_hp
+        self.attack_power = 50
+        self.crit_chance = 0.30  # Probability from 0 to 1.
+        self.crit_damage_multiplier = 1.50  # Total critical damage multiplier.
+        self.defense = 50
+        self.move_speed = self.MOVE_SPEED  # Pixels per second.
         self.x = 400
         self.y = 300
         self.frame = 0
@@ -153,7 +158,7 @@ class player:
         self.frame = int((self._animation_time + self.ANIMATION_EPSILON) / frame_time) % frame_count
 
     def _move(self, delta_time, can_move):
-        distance = self.MOVE_SPEED * delta_time
+        distance = self.move_speed * delta_time
         # Test the whole path in small steps so a slow frame cannot skip a wall.
         steps = max(1, ceil(distance / self.MAX_MOVE_STEP))
         step = distance / steps
