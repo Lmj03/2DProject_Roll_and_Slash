@@ -5,6 +5,7 @@ import game_world
 import Player
 import key_handle_events
 import lobby_map
+import ui
 from collision import can_walk_in_lobby
 from lobby_map import CANVAS_WIDTH, CANVAS_HEIGHT
 
@@ -34,6 +35,7 @@ def create_lobby_world(player):
 
     for name, left, top in lobby_map.FOREGROUND_SPRITES:
         world.add(LobbySprite(name, left, top), game_world.FOREGROUND)
+    world.add(ui.HealthBar(player), game_world.UI)
     return world
 
 

@@ -10,7 +10,7 @@ class player:
     UP, RIGHT, DOWN, LEFT = range(4)
     KEY_INPUTS = {SDLK_UP, SDLK_RIGHT, SDLK_DOWN, SDLK_LEFT}
     ANIMATION_ROWS = {UP: 0, RIGHT: 2, DOWN: 4, LEFT: 2}
-    MOVE_SPEED = 300.0  # Pixels per second, formerly 6 pixels every 0.02 seconds.
+    MOVE_SPEED = 360.0  # Pixels per second.
     MAX_MOVE_STEP = 6.0
     IDLE_FRAME_TIME = 0.1
     RUN_FRAME_TIME = 0.02
@@ -47,6 +47,8 @@ class player:
     }
 
     def __init__(self):
+        self.max_hp = 100
+        self.hp = self.max_hp
         self.x = 400
         self.y = 300
         self.frame = 0
