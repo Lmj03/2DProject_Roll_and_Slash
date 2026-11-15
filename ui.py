@@ -1,6 +1,7 @@
 from ctypes import byref, c_int
 
 from pico2d import TTF_SizeUTF8, load_font, load_image
+from sdl2 import SDL_SetTextureColorMod
 
 
 class HealthBar:
@@ -47,3 +48,45 @@ class HealthBar:
         y = fill_bottom + fill_height / 2
         self.font.draw(x + 1, y - 1, text, (25, 17, 15))
         self.font.draw(x, y, text, (248, 237, 211))
+
+
+class SwordStackBar:
+    CELL_SIZE = 100
+    DRAW_SIZE = 80
+    GAP = 6
+    EMPTY_BRIGHTNESS = 96
+
+    def __init__(self, player, right, bottom=32):
+        self.player = player
+        self.right = right
+        self.bottom = bottom
+        self.sheet = load_image('asset/sword_stack_sheet.png')
+        self.font = load_font('asset/fonts/SourceCodePro-Bold.ttf', 12)
+
+    def draw(self):
+        count = len(self.player.sword_max_stacks)
+        total_width = count * self.DRAW_SIZE + (count - 1) * self.GAP
+        left = self.right - total_width
+
+        for index, maximum in enumerate(self.player.sword_max_stacks):
+            maximum = max(0, maximum)
+            stacks = max(0, min(self.player.sword_stacks[index], maximum))
+            brightness = 255 if stacks else self.EMPTY_BRIGHTNESS
+            center_x = left + index * (self.DRAW_SIZE + self.GAP) + self.DRAW_SIZE / 2
+            center_y = self.bottom + self.DRAW_SIZE / 2
+
+            SDL_SetTextureColorMod(self.sheet.texture, brightness, brightness, brightness)
+            self.sheet.clip_draw(
+                index * self.CELL_SIZE, 0, self.CELL_SIZE, self.CELL_SIZE,
+                center_x, center_y, self.DRAW_SIZE, self.DRAW_SIZE,
+            )
+            SDL_SetTextureColorMod(self.sheet.texture, 255, 255, 255)
+
+            text = f'{stacks} / {maximum}'
+            text_width = c_int()
+            TTF_SizeUTF8(self.font.font, text.encode('utf-8'), byref(text_width), None)
+            x = center_x - text_width.value / 2
+            y = self.bottom + self.DRAW_SIZE * 0.19
+            color = (248, 237, 211) if stacks else (155, 150, 143)
+            self.font.draw(x + 1, y - 1, text, (18, 14, 12))
+            self.font.draw(x, y, text, color)

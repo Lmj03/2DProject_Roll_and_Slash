@@ -36,6 +36,7 @@ def create_lobby_world(player):
     for name, left, top in lobby_map.FOREGROUND_SPRITES:
         world.add(LobbySprite(name, left, top), game_world.FOREGROUND)
     world.add(ui.HealthBar(player), game_world.UI)
+    world.add(ui.SwordStackBar(player, right=CANVAS_WIDTH - 32), game_world.UI)
     return world
 
 

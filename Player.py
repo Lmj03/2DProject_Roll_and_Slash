@@ -54,6 +54,9 @@ class player:
         self.crit_damage_multiplier = 1.50  # Total critical damage multiplier.
         self.defense = 50
         self.move_speed = self.MOVE_SPEED  # Pixels per second.
+        # Skill order: thrust, sweep, dash, counter, spin, flash. Caps are provisional.
+        self.sword_max_stacks = (5, 4, 3, 3, 2, 2)
+        self.sword_stacks = [0] * 6
         self.x = 400
         self.y = 300
         self.frame = 0
