@@ -7,6 +7,7 @@ import key_handle_events
 import lobby_map
 import ui
 from dice_ui import DiceRollUI
+from well_interaction import WellInteraction
 from collision import can_walk_in_lobby
 from lobby_map import CANVAS_WIDTH, CANVAS_HEIGHT
 
@@ -23,7 +24,7 @@ class LobbySprite:
         self.image.draw(self.x, self.y)
 
 
-def create_lobby_world(player, dice_ui=None):
+def create_lobby_world(player, dice_ui=None, well=None):
     world = game_world.GameWorld()
     for name, left, top in lobby_map.BACKGROUND_SPRITES:
         world.add(LobbySprite(name, left, top), game_world.BACKGROUND)
@@ -41,6 +42,9 @@ def create_lobby_world(player, dice_ui=None):
     if dice_ui is None:
         dice_ui = DiceRollUI(player, right=CANVAS_WIDTH - 32, top=CANVAS_HEIGHT - 32)
     world.add(dice_ui, game_world.UI)
+    if well is None:
+        well = WellInteraction(player)
+    world.add(well, game_world.UI)
     return world
 
 
@@ -49,7 +53,8 @@ def main():
     player = Player.player()
     player.x, player.y = lobby_map.PLAYER_START
     dice_ui = DiceRollUI(player, right=CANVAS_WIDTH - 32, top=CANVAS_HEIGHT - 32)
-    world = create_lobby_world(player, dice_ui)
+    well = WellInteraction(player)
+    world = create_lobby_world(player, dice_ui, well)
     previous_time = time.perf_counter()
 
     while key_handle_events.running:
