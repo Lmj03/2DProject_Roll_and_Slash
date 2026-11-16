@@ -85,8 +85,13 @@ class DiceSlot:
         if self.roll_elapsed is None:
             image, index = self.faces, self.face - 1
             draw_size = self.face_draw_size
-            label = f'[{self.key_name}] ROLL'
-            color = (248, 237, 211)
+            if cooling_down:
+                seconds = ceil(self.cooldown_remaining * 10) / 10
+                label = f'{seconds:.1f}s'
+                color = (198, 183, 151)
+            else:
+                label = f'[{self.key_name}] ROLL'
+                color = (248, 237, 211)
         else:
             image = self.animation
             draw_size = self.DIE_SIZE
