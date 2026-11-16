@@ -95,6 +95,11 @@ class player:
         self.frame = 0
         self._animation_time = 0.0
         
+    def reset_inputs(self):
+        self.pressed_keys.clear()
+        self._attack_key_down = False
+        self._sync_movement()
+
     def handle_events(self, event):
         if event.type not in (SDL_KEYDOWN, SDL_KEYUP):
             return

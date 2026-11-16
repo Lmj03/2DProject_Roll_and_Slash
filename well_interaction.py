@@ -20,10 +20,12 @@ class WellInteraction:
 
     def handle_event(self, event):
         if self.menu.is_open:
-            return self.menu.handle_event(event)
+            handled = self.menu.handle_event(event)
+            if not self.menu.is_open:
+                self.player.reset_inputs()
+            return handled
         if event.type == SDL_KEYDOWN and event.key == SDLK_e and self.can_interact():
-            self.player.pressed_keys.clear()
-            self.player._sync_movement()
+            self.player.reset_inputs()
             self.menu.open()
             return True
         return False

@@ -62,12 +62,15 @@ def main():
         delta_time = frame_start - previous_time
         previous_time = frame_start
 
+        menu_was_open = well.menu.is_open
         key_handle_events.handle_events(player, dice_ui, well)
         if not key_handle_events.running:
             break
 
-        player.update(delta_time, can_walk_in_lobby)
-        dice_ui.update(delta_time)
+        # Keep the event/render loop responsive and discard simulation time spent in the menu.
+        simulation_delta = 0.0 if menu_was_open or well.menu.is_open else delta_time
+        player.update(simulation_delta, can_walk_in_lobby)
+        dice_ui.update(simulation_delta)
         clear_canvas()
         world.draw()
         update_canvas()
