@@ -39,4 +39,4 @@ class WellInteraction:
         x, image_y = WELL_PROMPT_POSITION
         y = CANVAS_HEIGHT - image_y
         self.hint_frame.draw(x, y, 246, 32)
-        DiceSlot._draw_label(self.font, '[E] Choose stat die', x, y, (248, 237, 211))
+        DiceSlot._draw_label(self.font, '[E] Choose Buff Dice', x, y, (248, 237, 211))

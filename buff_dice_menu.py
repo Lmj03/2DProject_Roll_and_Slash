@@ -70,7 +70,7 @@ class BuffDiceMenu:
         draw_rectangle(self.left, self.bottom, right, top, 30, 24, 22, filled=True)
         draw_rectangle(self.left, self.bottom, right, top, 172, 125, 68)
         draw_rectangle(self.left + 3, self.bottom + 3, right - 3, top - 3, 83, 58, 37)
-        DiceSlot._draw_label(self.font, 'CHOOSE STAT DIE', CANVAS_WIDTH / 2, top - 32,
+        DiceSlot._draw_label(self.font, 'CHOOSE BUFF DICE', CANVAS_WIDTH / 2, top - 32,
                              (248, 237, 211))
         for index, slot in enumerate(self.options):
             footer = 'EQUIPPED' if slot.kind == self.player.buff_dice_type else 'SELECT'
@@ -79,5 +79,5 @@ class BuffDiceMenu:
                 draw_rectangle(slot.left - 2, slot.bottom - 2,
                                slot.left + slot.WIDTH + 2, slot.bottom + slot.HEIGHT + 2,
                                248, 207, 130)
-        DiceSlot._draw_label(self.font, '[1-4] Choose   Enter Equip   Esc Close',
+        DiceSlot._draw_label(self.font, '[1-4]: Choose   Enter: Equip   Esc: Close',
                              CANVAS_WIDTH / 2, self.bottom + 28, (200, 188, 168))
