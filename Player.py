@@ -1,4 +1,4 @@
-from math import ceil, sqrt
+from math import ceil, isfinite, sqrt
 
 from pico2d import *
 from transitions import Machine
@@ -93,6 +93,14 @@ class player:
             auto_transitions=False,
             after_state_change='_reset_animation',
         )
+
+    def take_damage(self, amount):
+        """Apply already-resolved damage and return the actual HP lost."""
+        if not isfinite(amount) or amount <= 0 or self.hp <= 0:
+            return 0
+        damage = min(self.hp, amount)
+        self.hp = max(0, self.hp - damage)
+        return damage
 
     @property
     def attack_power(self):
