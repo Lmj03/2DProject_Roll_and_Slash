@@ -74,7 +74,7 @@ class DiceSlot:
 
     def draw(self, frame, font, footer=None, cooldown_mask=None):
         center_x = self.left + self.WIDTH / 2
-        cooling_down = self.cooldown_remaining > 0
+        cooling_down = self.cooldown_remaining > 0 and self.roll_elapsed is None
         frame_brightness = 160 if cooling_down else 255
         SDL_SetTextureColorMod(frame.texture, frame_brightness, frame_brightness, frame_brightness)
         frame.draw(center_x, self.bottom + self.HEIGHT / 2)
