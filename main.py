@@ -58,7 +58,8 @@ def advance_simulation(player, dice_ui, delta_time, can_move=can_walk_in_lobby, 
     dice_ui.update(0.0)
     remaining = delta_time
     while remaining > 0:
-        step = remaining
+        # Bound movement during contact checks, including slow frames and speed buffs.
+        step = min(remaining, campfire.SIMULATION_STEP) if campfire is not None else remaining
         for slot in (dice_ui.sword, dice_ui.buff):
             if slot.roll_elapsed is not None:
                 step = min(step, max(1e-9, slot.ROLL_DURATION - slot.roll_elapsed))
@@ -67,6 +68,7 @@ def advance_simulation(player, dice_ui, delta_time, can_move=can_walk_in_lobby, 
         dice_ui.update(step)
         if campfire is not None:
             campfire.update(step)
+            campfire.apply_damage(step, player)
         remaining = max(0.0, remaining - step)
 
 

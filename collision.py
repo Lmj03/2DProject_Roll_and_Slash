@@ -1,5 +1,6 @@
 from lobby_map import (
     CANVAS_HEIGHT, COURTYARD, FOOT_RADIUS, FORGE_WALLS, SOLID_ELLIPSES,
+    CAMPFIRE_POSITION, CAMPFIRE_DAMAGE_RADII,
     WELL_FOOTPRINT, WELL_INTERACTION_MARGIN,
 )
 
@@ -42,3 +43,10 @@ def can_walk_in_lobby(x, foot_y):
         ((x - cx) / (rx + FOOT_RADIUS)) ** 2 + ((y - cy) / (ry + FOOT_RADIUS)) ** 2 <= 1
         for cx, cy, rx, ry in SOLID_ELLIPSES
     )
+
+
+def touches_campfire(x, foot_y, center=CAMPFIRE_POSITION):
+    # All values here use bottom-left world coordinates, like the player's feet.
+    cx, cy = center
+    rx, ry = CAMPFIRE_DAMAGE_RADII
+    return ((x - cx) / rx) ** 2 + ((foot_y - cy) / ry) ** 2 <= 1

@@ -3,6 +3,7 @@ PLAYER_START = (CANVAS_WIDTH // 2, 150)
 FOOT_RADIUS = 9
 # World coordinates, measured from the canvas bottom-left. Kept above the bottom HUD.
 CAMPFIRE_POSITION = (1250, 145)
+CAMPFIRE_DAMAGE_RADII = (45, 28)
 ANVIL_FOOTPRINT = (307, 431, 30, 19)
 WELL_FOOTPRINT = (1095, 384, 149, 94)
 WELL_INTERACTION_MARGIN = 54
