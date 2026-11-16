@@ -3,6 +3,8 @@ from math import ceil, sqrt
 from pico2d import *
 from transitions import Machine
 
+from buffs import BuffState
+
 # Down attack poses are wider than the matching idle and run sprites.
 DOWN_ATTACK_WIDTH_SCALE = 0.86
 
@@ -49,11 +51,12 @@ class player:
     def __init__(self):
         self.max_hp = 100
         self.hp = self.max_hp
-        self.attack_power = 50
-        self.crit_chance = 0.30  # Probability from 0 to 1.
+        self.buffs = BuffState()
+        self.base_attack_power = 50
+        self.base_crit_chance = 0.30  # Probability from 0 to 1.
         self.crit_damage_multiplier = 1.50  # Total critical damage multiplier.
-        self.defense = 50
-        self.move_speed = self.MOVE_SPEED  # Pixels per second.
+        self.base_defense = 50
+        self.base_move_speed = self.MOVE_SPEED  # Pixels per second.
         # Skill order: thrust, sweep, dash, counter, spin, flash. Caps are provisional.
         self.sword_max_stacks = (5, 4, 3, 3, 2, 2)
         self.sword_stacks = [0] * 6
@@ -90,6 +93,22 @@ class player:
             auto_transitions=False,
             after_state_change='_reset_animation',
         )
+
+    @property
+    def attack_power(self):
+        return self.buffs.value('attack_power', self.base_attack_power)
+
+    @property
+    def crit_chance(self):
+        return self.buffs.value('crit_chance', self.base_crit_chance)
+
+    @property
+    def defense(self):
+        return self.buffs.value('defense', self.base_defense)
+
+    @property
+    def move_speed(self):
+        return self.buffs.value('move_speed', self.base_move_speed)
 
     def _reset_animation(self):
         self.frame = 0
@@ -142,6 +161,16 @@ class player:
         if delta_time <= 0:
             return
 
+        # Split at expiry so movement uses the buff only for its actual remaining time.
+        if self.buffs.active is not None:
+            active_time = min(delta_time, self.buffs.active.remaining)
+            self._update_motion(active_time, can_move)
+            self.buffs.update(active_time)
+            delta_time -= active_time
+        if delta_time > 0:
+            self._update_motion(delta_time, can_move)
+
+    def _update_motion(self, delta_time, can_move):
         self._animation_time += delta_time
         if self.state == 'ATTACK':
             duration = self.ATTACK_FRAME_TIME * 10

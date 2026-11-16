@@ -165,7 +165,9 @@ class DiceRollUI:
                 self.player.sword_stacks[index] + 1,
                 self.player.sword_max_stacks[index],
             )
-        self.buff.update(delta_time)
+        face = self.buff.update(delta_time)
+        if face is not None:
+            self.player.buffs.apply(self.buff.kind, face)
 
     def draw(self):
         self.sword.draw(self.frame, self.font, cooldown_mask=self.cooldown_mask)

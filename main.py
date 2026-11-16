@@ -48,6 +48,21 @@ def create_lobby_world(player, dice_ui=None, well=None):
     return world
 
 
+def advance_simulation(player, dice_ui, delta_time, can_move=can_walk_in_lobby):
+    # Equipment can change while simulation time is paused in the well menu.
+    dice_ui.update(0.0)
+    remaining = delta_time
+    while remaining > 0:
+        step = remaining
+        for slot in (dice_ui.sword, dice_ui.buff):
+            if slot.roll_elapsed is not None:
+                step = min(step, max(1e-9, slot.ROLL_DURATION - slot.roll_elapsed))
+        # Resolve a roll at its exact time, then simulate the remainder with its new effect.
+        player.update(step, can_move)
+        dice_ui.update(step)
+        remaining = max(0.0, remaining - step)
+
+
 def main():
     open_canvas(CANVAS_WIDTH, CANVAS_HEIGHT)
     player = Player.player()
@@ -69,8 +84,7 @@ def main():
 
         # Keep the event/render loop responsive and discard simulation time spent in the menu.
         simulation_delta = 0.0 if menu_was_open or well.menu.is_open else delta_time
-        player.update(simulation_delta, can_walk_in_lobby)
-        dice_ui.update(simulation_delta)
+        advance_simulation(player, dice_ui, simulation_delta)
         clear_canvas()
         world.draw()
         update_canvas()
