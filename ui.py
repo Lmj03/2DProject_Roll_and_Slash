@@ -1,4 +1,7 @@
 from ctypes import byref, c_int
+from math import ceil
+
+from buffs import BUFF_SPECS
 
 from pico2d import TTF_SizeUTF8, load_font, load_image
 from sdl2 import SDL_SetTextureColorMod
@@ -90,3 +93,37 @@ class SwordStackBar:
             color = (248, 237, 211) if stacks else (155, 150, 143)
             self.font.draw(x + 1, y - 1, text, (18, 14, 12))
             self.font.draw(x, y, text, color)
+
+
+class BuffStatusBar:
+    CELL_SIZE = 100
+    DRAW_SIZE = 48
+
+    def __init__(self, player, left=32, bottom=94):
+        self.player = player
+        self.left = left
+        self.bottom = bottom
+        self.sheet = load_image('asset/buff_status_sheet.png')
+        self.font = load_font('asset/fonts/SourceCodePro-Bold.ttf', 12)
+
+    def draw(self):
+        active = self.player.buffs.active
+        if active is None:
+            return
+        spec = BUFF_SPECS[active.kind]
+        center_x = self.left + self.DRAW_SIZE / 2
+        center_y = self.bottom + self.DRAW_SIZE / 2
+        self.sheet.clip_draw(
+            spec.icon_index * self.CELL_SIZE, 0, self.CELL_SIZE, self.CELL_SIZE,
+            center_x, center_y, self.DRAW_SIZE, self.DRAW_SIZE,
+        )
+        amount = spec.amount_per_face * active.face * 100
+        unit = '%' if spec.multiplicative else '%p'
+        text_left = self.left + self.DRAW_SIZE + 8
+        self._draw_text(f'{spec.label} +{amount:g}{unit}', text_left, self.bottom + 33)
+        seconds = ceil(active.remaining * 10) / 10
+        self._draw_text(f'{seconds:.1f}s', text_left, self.bottom + 13)
+
+    def _draw_text(self, text, x, y):
+        self.font.draw(x + 1, y - 1, text, (20, 14, 12))
+        self.font.draw(x, y, text, (248, 237, 211))
