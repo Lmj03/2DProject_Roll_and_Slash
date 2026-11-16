@@ -1,4 +1,7 @@
-from pico2d import draw_rectangle, load_font, load_image
+from pico2d import (
+    SDL_KEYDOWN, SDLK_1, SDLK_4, SDLK_DOWN, SDLK_ESCAPE, SDLK_LEFT, SDLK_RIGHT,
+    SDLK_UP, draw_rectangle, load_font, load_image,
+)
 
 from dice_ui import DiceSlot
 from lobby_map import CANVAS_WIDTH, CANVAS_HEIGHT
@@ -24,6 +27,27 @@ class BuffDiceMenu:
                      str(index + 1))
             for index, kind in enumerate(self.KINDS)
         ]
+
+    def open(self):
+        self.focus = self.KINDS.index(self.player.buff_dice_type)
+        self.is_open = True
+
+    def close(self):
+        self.is_open = False
+
+    def handle_event(self, event):
+        if not self.is_open:
+            return False
+        if event.type == SDL_KEYDOWN:
+            if event.key == SDLK_ESCAPE:
+                self.close()
+            elif event.key in (SDLK_LEFT, SDLK_UP):
+                self.focus = (self.focus - 1) % len(self.KINDS)
+            elif event.key in (SDLK_RIGHT, SDLK_DOWN):
+                self.focus = (self.focus + 1) % len(self.KINDS)
+            elif SDLK_1 <= event.key <= SDLK_4:
+                self.focus = event.key - SDLK_1
+        return True
 
     def draw(self):
         if not self.is_open:

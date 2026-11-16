@@ -62,7 +62,7 @@ def main():
         delta_time = frame_start - previous_time
         previous_time = frame_start
 
-        key_handle_events.handle_events(player, dice_ui)
+        key_handle_events.handle_events(player, dice_ui, well)
         if not key_handle_events.running:
             break
 

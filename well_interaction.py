@@ -1,4 +1,4 @@
-from pico2d import load_font, load_image
+from pico2d import SDL_KEYDOWN, SDLK_e, load_font, load_image
 
 from collision import can_interact_with_well
 from buff_dice_menu import BuffDiceMenu
@@ -17,6 +17,16 @@ class WellInteraction:
         return self.player.state in ('IDLE', 'RUN') and can_interact_with_well(
             self.player.x, self.player.y - self.player.FOOT_OFFSET_Y,
         )
+
+    def handle_event(self, event):
+        if self.menu.is_open:
+            return self.menu.handle_event(event)
+        if event.type == SDL_KEYDOWN and event.key == SDLK_e and self.can_interact():
+            self.player.pressed_keys.clear()
+            self.player._sync_movement()
+            self.menu.open()
+            return True
+        return False
 
     def draw(self):
         if self.menu.is_open:
