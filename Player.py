@@ -2,6 +2,7 @@ from math import ceil, isfinite, sqrt
 
 from pico2d import *
 from transitions import Machine
+from sdl2 import SDL_SetTextureColorMod
 
 from buffs import BuffState
 
@@ -19,6 +20,9 @@ class player:
     ATTACK_FRAME_TIME = 0.05
     ANIMATION_EPSILON = 1e-9  # Tolerance for floating-point frame boundaries.
     DRAW_SCALE = 1.2
+    HIT_FLASH_TIME = 0.16
+    DAMAGE_POPUP_TIME = 0.65
+    DAMAGE_POPUP_RISE = 24
     FOOT_OFFSET_Y = 36  # Distance below the center of an unscaled sprite.
     # (x offset, depth below cell center) in original sprite pixels, indexed by combo and frame.
     ATTACK_SHADOW_CONTACTS = {
@@ -51,6 +55,9 @@ class player:
     def __init__(self):
         self.max_hp = 100
         self.hp = self.max_hp
+        self.hit_flash_remaining = 0.0
+        self.damage_popups = []
+        self.damage_font = load_font('asset/fonts/SourceCodePro-Bold.ttf', 16)
         self.buffs = BuffState()
         self.base_attack_power = 50
         self.base_crit_chance = 0.30  # Probability from 0 to 1.
@@ -100,6 +107,11 @@ class player:
             return 0
         damage = min(self.hp, amount)
         self.hp = max(0, self.hp - damage)
+        self.hit_flash_remaining = self.HIT_FLASH_TIME
+        self.damage_popups.append({
+            'damage': damage, 'x': self.x, 'y': self.y + 55,
+            'remaining': self.DAMAGE_POPUP_TIME,
+        })
         return damage
 
     @property
@@ -169,6 +181,11 @@ class player:
         if delta_time <= 0:
             return
 
+        self.hit_flash_remaining = max(0.0, self.hit_flash_remaining - delta_time)
+        for popup in self.damage_popups:
+            popup['remaining'] -= delta_time
+        self.damage_popups = [popup for popup in self.damage_popups if popup['remaining'] > 1e-9]
+
         # Split at expiry so movement uses the buff only for its actual remaining time.
         if self.buffs.active is not None:
             active_time = min(delta_time, self.buffs.active.remaining)
@@ -230,6 +247,16 @@ class player:
             self._draw_frame(self.Player_Run, self.ANIMATION_ROWS[self.dir])
         elif self.state == 'ATTACK':
             self._draw_attack()
+        self._draw_damage_popups()
+
+    def _draw_damage_popups(self):
+        for popup in self.damage_popups:
+            progress = 1.0 - popup['remaining'] / self.DAMAGE_POPUP_TIME
+            text = f"-{popup['damage']:g}"
+            x = popup['x'] - len(text) * 5
+            y = popup['y'] + self.DAMAGE_POPUP_RISE * progress
+            self.damage_font.draw(x + 1, y - 1, text, (35, 7, 5))
+            self.damage_font.draw(x, y, text, (255, 95, 64))
 
     def _draw_shadow(self):
         x = self.x
@@ -265,9 +292,17 @@ class player:
         draw_height = round(cell_height * self.DRAW_SCALE)
         draw_y = self.y + self.FOOT_OFFSET_Y * (self.DRAW_SCALE - 1)
 
+        hit_flash = self.hit_flash_remaining > 0 and image in (
+            self.Idle_Animation, self.Player_Run, self.Normal_Attack,
+            self.Normal_Attack_Up, self.Normal_Attack_Down,
+        )
+        if hit_flash:
+            SDL_SetTextureColorMod(image.texture, 255, 80, 80)
         if self.dir == self.LEFT:
             image.clip_composite_draw(
                 left, bottom, cell_width, cell_height, 0, 'h', self.x, draw_y, draw_width, draw_height)
         else:
             image.clip_draw(
                 left, bottom, cell_width, cell_height, self.x, draw_y, draw_width, draw_height)
+        if hit_flash:
+            SDL_SetTextureColorMod(image.texture, 255, 255, 255)
