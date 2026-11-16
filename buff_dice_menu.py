@@ -1,6 +1,7 @@
 from pico2d import (
-    SDL_KEYDOWN, SDLK_1, SDLK_4, SDLK_DOWN, SDLK_ESCAPE, SDLK_LEFT, SDLK_RIGHT,
-    SDLK_UP, draw_rectangle, load_font, load_image,
+    SDL_BUTTON_LEFT, SDL_KEYDOWN, SDL_MOUSEBUTTONDOWN, SDLK_1, SDLK_4, SDLK_DOWN,
+    SDLK_ESCAPE, SDLK_LEFT, SDLK_RETURN, SDLK_RIGHT, SDLK_UP, draw_rectangle,
+    get_canvas_height, load_font, load_image,
 )
 
 from dice_ui import DiceSlot
@@ -35,18 +36,31 @@ class BuffDiceMenu:
     def close(self):
         self.is_open = False
 
+    def confirm(self):
+        self.player.buff_dice_type = self.KINDS[self.focus]
+        self.close()
+
     def handle_event(self, event):
         if not self.is_open:
             return False
         if event.type == SDL_KEYDOWN:
             if event.key == SDLK_ESCAPE:
                 self.close()
+            elif event.key == SDLK_RETURN:
+                self.confirm()
             elif event.key in (SDLK_LEFT, SDLK_UP):
                 self.focus = (self.focus - 1) % len(self.KINDS)
             elif event.key in (SDLK_RIGHT, SDLK_DOWN):
                 self.focus = (self.focus + 1) % len(self.KINDS)
             elif SDLK_1 <= event.key <= SDLK_4:
                 self.focus = event.key - SDLK_1
+        elif event.type == SDL_MOUSEBUTTONDOWN and event.button == SDL_BUTTON_LEFT:
+            y = get_canvas_height() - 1 - event.y
+            for index, slot in enumerate(self.options):
+                if slot.contains(event.x, y):
+                    self.focus = index
+                    self.confirm()
+                    break
         return True
 
     def draw(self):
