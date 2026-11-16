@@ -52,6 +52,7 @@ class DiceSlot:
         if self.roll_elapsed >= self.ROLL_DURATION - 1e-9:
             self.face = random.randint(1, 6)
             self.roll_elapsed = None
+            return self.face
 
     def contains(self, x, y):
         return (self.left <= x < self.left + self.WIDTH
@@ -117,7 +118,13 @@ class DiceRollUI:
 
     def update(self, delta_time):
         self.buff.set_type(self.player.buff_dice_type)
-        self.sword.update(delta_time)
+        face = self.sword.update(delta_time)
+        if face is not None:
+            index = face - 1
+            self.player.sword_stacks[index] = min(
+                self.player.sword_stacks[index] + 1,
+                self.player.sword_max_stacks[index],
+            )
         self.buff.update(delta_time)
 
     def draw(self):
