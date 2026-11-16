@@ -20,7 +20,7 @@ class DiceSlot:
     WIDTH, HEIGHT = 128, 156
     CELL_SIZE = 100
     DIE_SIZE = 92
-    ROLL_FRAME_TIME = 0.06
+    ROLL_FRAME_TIME = 0.03
     ROLL_DURATION = 0.72
 
     def __init__(self, kind, left, bottom, key_name):
