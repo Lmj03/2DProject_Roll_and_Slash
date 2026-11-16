@@ -24,11 +24,13 @@ class DiceSlot:
     ROLL_FRAME_TIME = 0.03
     ROLL_DURATION = 0.72
 
-    def __init__(self, kind, left, bottom, key_name):
+    def __init__(self, kind, left, bottom, key_name, *, cooldown=0.0):
         self.kind = None
         self.left = left
         self.bottom = bottom
         self.key_name = key_name
+        self.cooldown_duration = cooldown
+        self.cooldown_remaining = 0.0
         self.set_type(kind)
 
     def set_type(self, kind):
@@ -44,11 +46,17 @@ class DiceSlot:
         self.roll_elapsed = None
 
     def roll(self):
-        if self.roll_elapsed is None:
+        if self.roll_elapsed is None and self.cooldown_remaining == 0:
             self.roll_elapsed = 0.0
+            self.cooldown_remaining = self.cooldown_duration
 
     def update(self, delta_time):
-        if self.roll_elapsed is None or delta_time <= 0:
+        if delta_time <= 0:
+            return
+        self.cooldown_remaining = max(0.0, self.cooldown_remaining - delta_time)
+        if self.cooldown_remaining < 1e-9:
+            self.cooldown_remaining = 0.0
+        if self.roll_elapsed is None:
             return
         self.roll_elapsed += delta_time
         if self.roll_elapsed >= self.ROLL_DURATION - 1e-9:
@@ -95,6 +103,8 @@ class DiceSlot:
 
 class DiceRollUI:
     GAP = 12
+    SWORD_COOLDOWN = 5.0
+    BUFF_COOLDOWN = 10.0
 
     def __init__(self, player, right, top):
         self.player = player
@@ -102,9 +112,9 @@ class DiceRollUI:
         self.font = load_font('asset/fonts/SourceCodePro-Bold.ttf', 14)
         bottom = top - DiceSlot.HEIGHT
         left = right - DiceSlot.WIDTH * 2 - self.GAP
-        self.sword = DiceSlot('sword', left, bottom, 'R')
+        self.sword = DiceSlot('sword', left, bottom, 'R', cooldown=self.SWORD_COOLDOWN)
         self.buff = DiceSlot(player.buff_dice_type, left + DiceSlot.WIDTH + self.GAP,
-                             bottom, 'F')
+                             bottom, 'F', cooldown=self.BUFF_COOLDOWN)
 
     def handle_event(self, event):
         if event.type in (SDL_KEYDOWN, SDL_KEYUP):
