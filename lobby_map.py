@@ -2,6 +2,9 @@ CANVAS_WIDTH, CANVAS_HEIGHT = 1500, 700
 PLAYER_START = (CANVAS_WIDTH // 2, 150)
 FOOT_RADIUS = 9
 ANVIL_FOOTPRINT = (307, 431, 30, 19)
+WELL_FOOTPRINT = (1095, 384, 149, 94)
+WELL_INTERACTION_MARGIN = 54
+WELL_PROMPT_POSITION = (1095, 278)
 
 # Collision shapes use the lobby image's top-left coordinate system.
 COURTYARD = (
@@ -18,7 +21,7 @@ FORGE_WALLS = (
 )
 # Center x, center y, horizontal radius, vertical radius.
 SOLID_ELLIPSES = (
-    (1095, 384, 149, 94),  # Well
+    WELL_FOOTPRINT,         # Well
     ANVIL_FOOTPRINT,       # Anvil stand
     (197, 485, 18, 24),    # Barrel by the forge entrance
 )

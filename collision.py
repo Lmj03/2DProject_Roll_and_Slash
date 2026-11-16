@@ -1,6 +1,16 @@
 from lobby_map import (
     CANVAS_HEIGHT, COURTYARD, FOOT_RADIUS, FORGE_WALLS, SOLID_ELLIPSES,
+    WELL_FOOTPRINT, WELL_INTERACTION_MARGIN,
 )
+
+
+def can_interact_with_well(x, foot_y):
+    cx, cy, rx, ry = WELL_FOOTPRINT
+    y = CANVAS_HEIGHT - foot_y
+    return can_walk_in_lobby(x, foot_y) and (
+        ((x - cx) / (rx + WELL_INTERACTION_MARGIN)) ** 2
+        + ((y - cy) / (ry + WELL_INTERACTION_MARGIN)) ** 2 <= 1
+    )
 
 
 def _polygon_location(x, y, polygon):
