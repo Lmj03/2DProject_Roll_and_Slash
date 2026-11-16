@@ -60,7 +60,7 @@ class DiceSlot:
         return (self.left <= x < self.left + self.WIDTH
                 and self.bottom <= y < self.bottom + self.HEIGHT)
 
-    def draw(self, frame, font):
+    def draw(self, frame, font, footer=None):
         center_x = self.left + self.WIDTH / 2
         frame.draw(center_x, self.bottom + self.HEIGHT / 2)
         self._draw_label(font, self.title, center_x, self.bottom + self.HEIGHT - 20,
@@ -78,6 +78,8 @@ class DiceSlot:
             index = int(self.roll_elapsed / self.ROLL_FRAME_TIME) % frames
             label = 'ROLLING'
             color = (173, 163, 146)
+        if footer is not None:
+            label = footer
         image.clip_draw(index * self.CELL_SIZE, 0, self.CELL_SIZE, self.CELL_SIZE,
                         center_x, self.bottom + 79, draw_size, draw_size)
         self._draw_label(font, label, center_x, self.bottom + 18, color)

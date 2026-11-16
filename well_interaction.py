@@ -1,6 +1,7 @@
 from pico2d import load_font, load_image
 
 from collision import can_interact_with_well
+from buff_dice_menu import BuffDiceMenu
 from dice_ui import DiceSlot
 from lobby_map import CANVAS_HEIGHT, WELL_PROMPT_POSITION
 
@@ -10,6 +11,7 @@ class WellInteraction:
         self.player = player
         self.font = load_font('asset/fonts/SourceCodePro-Bold.ttf', 14)
         self.hint_frame = load_image('asset/health_bar_frame.png')
+        self.menu = BuffDiceMenu(player)
 
     def can_interact(self):
         return self.player.state in ('IDLE', 'RUN') and can_interact_with_well(
@@ -17,6 +19,9 @@ class WellInteraction:
         )
 
     def draw(self):
+        if self.menu.is_open:
+            self.menu.draw()
+            return
         if not self.can_interact():
             return
         x, image_y = WELL_PROMPT_POSITION
