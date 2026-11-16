@@ -98,12 +98,15 @@ class SwordStackBar:
 class BuffStatusBar:
     CELL_SIZE = 100
     DRAW_SIZE = 48
+    DURATION_STEPS = 120
+    MASK_COLUMNS = 11
 
-    def __init__(self, player, left=32, bottom=94):
+    def __init__(self, player, left=32, bottom=94, duration_mask=None):
         self.player = player
         self.left = left
         self.bottom = bottom
         self.sheet = load_image('asset/buff_status_sheet.png')
+        self.duration_mask = duration_mask if duration_mask is not None else load_image('asset/dice_cooldown_mask.png')
         self.font = load_font('asset/fonts/SourceCodePro-Bold.ttf', 12)
 
     def draw(self):
@@ -117,12 +120,25 @@ class BuffStatusBar:
             spec.icon_index * self.CELL_SIZE, 0, self.CELL_SIZE, self.CELL_SIZE,
             center_x, center_y, self.DRAW_SIZE, self.DRAW_SIZE,
         )
+        self._draw_duration(active, center_x, center_y)
         amount = spec.amount_per_face * active.face * 100
         unit = '%' if spec.multiplicative else '%p'
         text_left = self.left + self.DRAW_SIZE + 8
         self._draw_text(f'{spec.label} +{amount:g}{unit}', text_left, self.bottom + 33)
         seconds = ceil(active.remaining * 10) / 10
         self._draw_text(f'{seconds:.1f}s', text_left, self.bottom + 13)
+
+    def _draw_duration(self, active, center_x, center_y):
+        overlay = min(self.DURATION_STEPS, int(active.elapsed_ratio * self.DURATION_STEPS))
+        if overlay == 0:
+            return
+        column, row = overlay % self.MASK_COLUMNS, overlay // self.MASK_COLUMNS
+        bottom = self.duration_mask.h - (row + 1) * self.CELL_SIZE
+        # Mirror the cooldown sector: elapsed darkness grows clockwise from twelve o'clock.
+        self.duration_mask.clip_composite_draw(
+            column * self.CELL_SIZE, bottom, self.CELL_SIZE, self.CELL_SIZE,
+            0, 'h', center_x, center_y, self.DRAW_SIZE, self.DRAW_SIZE,
+        )
 
     def _draw_text(self, text, x, y):
         self.font.draw(x + 1, y - 1, text, (20, 14, 12))
