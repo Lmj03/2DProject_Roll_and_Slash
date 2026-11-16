@@ -4,7 +4,7 @@ running = True
 
 Player_dir = 0 # 
 
-def handle_events(player):
+def handle_events(player, dice_ui=None):
     global running
     events = get_events()
     for event in events:
@@ -12,5 +12,5 @@ def handle_events(player):
             running = False
         elif event.type == SDL_KEYDOWN and event.key == SDLK_ESCAPE:
             running = False
-        else:
+        elif dice_ui is None or not dice_ui.handle_event(event):
             player.handle_events(event)

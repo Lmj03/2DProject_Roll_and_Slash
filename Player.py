@@ -57,6 +57,7 @@ class player:
         # Skill order: thrust, sweep, dash, counter, spin, flash. Caps are provisional.
         self.sword_max_stacks = (5, 4, 3, 3, 2, 2)
         self.sword_stacks = [0] * 6
+        self.buff_dice_type = 'attack'
         self.x = 400
         self.y = 300
         self.frame = 0

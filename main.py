@@ -6,6 +6,7 @@ import Player
 import key_handle_events
 import lobby_map
 import ui
+from dice_ui import DiceRollUI
 from collision import can_walk_in_lobby
 from lobby_map import CANVAS_WIDTH, CANVAS_HEIGHT
 
@@ -22,7 +23,7 @@ class LobbySprite:
         self.image.draw(self.x, self.y)
 
 
-def create_lobby_world(player):
+def create_lobby_world(player, dice_ui=None):
     world = game_world.GameWorld()
     for name, left, top in lobby_map.BACKGROUND_SPRITES:
         world.add(LobbySprite(name, left, top), game_world.BACKGROUND)
@@ -37,6 +38,9 @@ def create_lobby_world(player):
         world.add(LobbySprite(name, left, top), game_world.FOREGROUND)
     world.add(ui.HealthBar(player), game_world.UI)
     world.add(ui.SwordStackBar(player, right=CANVAS_WIDTH - 32), game_world.UI)
+    if dice_ui is None:
+        dice_ui = DiceRollUI(player, right=CANVAS_WIDTH - 32, top=CANVAS_HEIGHT - 32)
+    world.add(dice_ui, game_world.UI)
     return world
 
 
@@ -44,7 +48,8 @@ def main():
     open_canvas(CANVAS_WIDTH, CANVAS_HEIGHT)
     player = Player.player()
     player.x, player.y = lobby_map.PLAYER_START
-    world = create_lobby_world(player)
+    dice_ui = DiceRollUI(player, right=CANVAS_WIDTH - 32, top=CANVAS_HEIGHT - 32)
+    world = create_lobby_world(player, dice_ui)
     previous_time = time.perf_counter()
 
     while key_handle_events.running:
@@ -52,11 +57,12 @@ def main():
         delta_time = frame_start - previous_time
         previous_time = frame_start
 
-        key_handle_events.handle_events(player)
+        key_handle_events.handle_events(player, dice_ui)
         if not key_handle_events.running:
             break
 
         player.update(delta_time, can_walk_in_lobby)
+        dice_ui.update(delta_time)
         clear_canvas()
         world.draw()
         update_canvas()
