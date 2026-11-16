@@ -8,11 +8,12 @@ from pico2d import (
 
 
 DICE_TYPES = {
-    'sword': ('Sword', 'SWORD'),
-    'attack': ('Attack', 'ATK'),
-    'move': ('Move', 'SPEED'),
-    'critical': ('Critical', 'CRIT'),
-    'defense': ('Defense', 'DEF'),
+    # Prefix, title, face scale. The attack face has less transparent padding.
+    'sword': ('Sword', 'SWORD', 1.0),
+    'attack': ('Attack', 'ATK', 0.9),
+    'move': ('Move', 'SPEED', 1.0),
+    'critical': ('Critical', 'CRIT', 1.0),
+    'defense': ('Defense', 'DEF', 1.0),
 }
 
 
@@ -33,11 +34,12 @@ class DiceSlot:
     def set_type(self, kind):
         if self.kind == kind:
             return
-        prefix, title = DICE_TYPES[kind]
+        prefix, title, face_scale = DICE_TYPES[kind]
         faces = load_image(f'asset/{prefix}_Dice.png')
         animation = load_image(f'asset/{prefix}_Dice_Roll.png')
         self.faces, self.animation = faces, animation
         self.kind, self.title = kind, title
+        self.face_draw_size = round(self.DIE_SIZE * face_scale)
         self.face = 1
         self.roll_elapsed = None
 
@@ -66,16 +68,18 @@ class DiceSlot:
 
         if self.roll_elapsed is None:
             image, index = self.faces, self.face - 1
+            draw_size = self.face_draw_size
             label = f'[{self.key_name}] ROLL'
             color = (248, 237, 211)
         else:
             image = self.animation
+            draw_size = self.DIE_SIZE
             frames = image.w // self.CELL_SIZE
             index = int(self.roll_elapsed / self.ROLL_FRAME_TIME) % frames
             label = 'ROLLING'
             color = (173, 163, 146)
         image.clip_draw(index * self.CELL_SIZE, 0, self.CELL_SIZE, self.CELL_SIZE,
-                        center_x, self.bottom + 79, self.DIE_SIZE, self.DIE_SIZE)
+                        center_x, self.bottom + 79, draw_size, draw_size)
         self._draw_label(font, label, center_x, self.bottom + 18, color)
 
     @staticmethod
