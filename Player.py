@@ -18,9 +18,13 @@ class player:
     IDLE_FRAME_TIME = 0.1
     RUN_FRAME_TIME = 0.02
     ATTACK_FRAME_TIME = 0.05
-    ATTACK_STATES = ('ATTACK', 'QUICK_THRUST')
-    QUICK_THRUST_FRAME_TIME = 0.05
-    QUICK_THRUST_FRAME_COUNT = 6
+    SWORD_SKILL_TIMINGS = {
+        'QUICK_THRUST': (0.05, 6),        # Frame time in seconds, frame count.
+        'HORIZONTAL_SLASH': (0.065, 6),
+    }
+    ATTACK_STATES = ('ATTACK', *SWORD_SKILL_TIMINGS)
+    # Offsets in source pixels, using Pico2d's bottom-left coordinates.
+    HORIZONTAL_SLASH_TRAIL_OFFSETS = {DOWN: (0, -18), LEFT: (-18, 0), RIGHT: (18, 0)}
     # Temporary animation preview mode. Keep enabled until removal is requested.
     ALLOW_SKILLS_WITHOUT_STACKS = True
     ANIMATION_EPSILON = 1e-9  # Tolerance for floating-point frame boundaries.
@@ -88,16 +92,8 @@ class player:
         self.Attack_Trail_Down = load_image('asset/attack_down_trail.png')
         self.Idle_Animation = load_image('asset/Player_Idle.png')
         self.Player_Run = load_image('asset/Run.png')
-        skill_path = 'asset/skills/quick_thrust'
-        self.quick_thrust_motion = {}
-        self.quick_thrust_trail = {}
-        for direction, name in ((self.UP, 'up'), (self.DOWN, 'down'),
-                                (self.LEFT, 'left'), (self.RIGHT, 'right')):
-            size = '100x180' if direction in (self.UP, self.DOWN) else '180x100'
-            self.quick_thrust_motion[direction] = load_image(
-                f'{skill_path}/quick_thrust_{name}_motion_100x100.png')
-            self.quick_thrust_trail[direction] = load_image(
-                f'{skill_path}/quick_thrust_{name}_fx_{size}.png')
+        self.quick_thrust_motion, self.quick_thrust_trail = self._load_sword_skill_sheets('quick_thrust')
+        self.horizontal_slash_motion, self.horizontal_slash_trail = self._load_sword_skill_sheets('horizontal_slash')
         self.dir = self.UP
         self.pressed_keys = set()
         self.move_x = 0
@@ -110,12 +106,24 @@ class player:
                 {'trigger': 'stop_running', 'source': 'RUN', 'dest': 'IDLE'},
                 {'trigger': 'start_attack', 'source': ['IDLE', 'RUN'], 'dest': 'ATTACK'},
                 {'trigger': 'start_quick_thrust', 'source': ['IDLE', 'RUN'], 'dest': 'QUICK_THRUST'},
+                {'trigger': 'start_horizontal_slash', 'source': ['IDLE', 'RUN'], 'dest': 'HORIZONTAL_SLASH'},
                 {'trigger': 'stop_attack', 'source': list(self.ATTACK_STATES), 'dest': 'IDLE'},
             ],
             initial='IDLE',
             auto_transitions=False,
             after_state_change='_reset_animation',
         )
+
+    def _load_sword_skill_sheets(self, skill):
+        motion = {}
+        trail = {}
+        for direction, name in ((self.UP, 'up'), (self.DOWN, 'down'),
+                                (self.LEFT, 'left'), (self.RIGHT, 'right')):
+            size = '100x180' if direction in (self.UP, self.DOWN) else '180x100'
+            path = f'asset/skills/{skill}/{skill}_{name}'
+            motion[direction] = load_image(f'{path}_motion_100x100.png')
+            trail[direction] = load_image(f'{path}_fx_{size}.png')
+        return motion, trail
 
     def take_damage(self, amount):
         """Apply already-resolved damage and return the actual HP lost."""
@@ -170,8 +178,9 @@ class player:
 
         if event.type == SDL_KEYDOWN and SDLK_1 <= event.key <= SDLK_6:
             index = event.key - SDLK_1
-            if index == 0:
-                self._try_quick_thrust()
+            skill_starters = (self.start_quick_thrust, self.start_horizontal_slash)
+            if index < len(skill_starters):
+                self._try_sword_skill(index, skill_starters[index])
             elif self.sword_stacks[index] > 0:
                 self.sword_stacks[index] -= 1
             return
@@ -188,15 +197,15 @@ class player:
             return
         self._sync_movement()
 
-    def _try_quick_thrust(self):
+    def _try_sword_skill(self, index, start_skill):
         if self.state not in ('IDLE', 'RUN'):
             return
-        stacks = self.sword_stacks[0]
+        stacks = self.sword_stacks[index]
         if stacks <= 0 and not self.ALLOW_SKILLS_WITHOUT_STACKS:
             return
-        self.start_quick_thrust()
+        start_skill()
         if stacks > 0:
-            self.sword_stacks[0] -= 1
+            self.sword_stacks[index] -= 1
 
     def _sync_movement(self):
         self.move_x = (SDLK_RIGHT in self.pressed_keys) - (SDLK_LEFT in self.pressed_keys)
@@ -232,11 +241,8 @@ class player:
     def _update_motion(self, delta_time, can_move):
         self._animation_time += delta_time
         if self.state in self.ATTACK_STATES:
-            quick_thrust = self.state == 'QUICK_THRUST'
-            if quick_thrust:
-                frame_time, frame_count = self.QUICK_THRUST_FRAME_TIME, self.QUICK_THRUST_FRAME_COUNT
-            else:
-                frame_time, frame_count = self.ATTACK_FRAME_TIME, 10
+            normal_attack = self.state == 'ATTACK'
+            frame_time, frame_count = self.SWORD_SKILL_TIMINGS.get(self.state, (self.ATTACK_FRAME_TIME, 10))
             duration = frame_time * frame_count
             if self._animation_time < duration - self.ANIMATION_EPSILON:
                 self.frame = int((self._animation_time + self.ANIMATION_EPSILON) / frame_time)
@@ -246,7 +252,7 @@ class player:
             delta_time = max(0.0, self._animation_time - duration)
             self.stop_attack()
             self._sync_movement()
-            if not quick_thrust:
+            if normal_attack:
                 self.attack_combo = (self.attack_combo + 1) % 3
             self._animation_time = delta_time
 
@@ -287,7 +293,11 @@ class player:
         elif self.state == 'ATTACK':
             self._draw_attack()
         elif self.state == 'QUICK_THRUST':
-            self._draw_quick_thrust()
+            self._draw_sword_skill(self.quick_thrust_motion, self.quick_thrust_trail)
+        elif self.state == 'HORIZONTAL_SLASH':
+            offset = self.HORIZONTAL_SLASH_TRAIL_OFFSETS.get(self.dir, (0, 0))
+            self._draw_sword_skill(self.horizontal_slash_motion, self.horizontal_slash_trail,
+                                   trail_offset=offset)
         self._draw_damage_popups()
 
     def _draw_damage_popups(self):
@@ -326,32 +336,35 @@ class player:
             self._draw_frame(self.Normal_Attack, self.attack_combo)
             self._draw_frame(self.Attack_Trail, self.attack_combo, cell_width=180)
 
-    def _draw_quick_thrust(self):
+    def _draw_sword_skill(self, motion, trail, *, trail_offset=(0, 0)):
         cell_width, cell_height = (100, 180) if self.dir in (self.UP, self.DOWN) else (180, 100)
-        # Directional sheets include left-facing frames. Draw both layers at the same center.
-        self._draw_frame(self.quick_thrust_motion[self.dir], 0, mirror_left=False)
-        self._draw_frame(self.quick_thrust_trail[self.dir], 0, cell_width, cell_height,
-                         mirror_left=False)
+        # The left-facing sheets already contain mirrored frames.
+        self._draw_frame(motion[self.dir], 0, mirror_left=False)
+        self._draw_frame(trail[self.dir], 0, cell_width, cell_height, mirror_left=False,
+                         offset=trail_offset)
 
     def _draw_frame(self, image, row, cell_width=100, cell_height=100, *, width_scale=1,
-                    mirror_left=True):
+                    mirror_left=True, offset=(0, 0)):
         left = self.frame * cell_width
         bottom = row * cell_height
         draw_width = round(cell_width * self.DRAW_SCALE * width_scale)
         draw_height = round(cell_height * self.DRAW_SCALE)
-        draw_y = self.y + self.FOOT_OFFSET_Y * (self.DRAW_SCALE - 1)
+        offset_x, offset_y = offset
+        draw_x = self.x + offset_x * self.DRAW_SCALE
+        draw_y = self.y + self.FOOT_OFFSET_Y * (self.DRAW_SCALE - 1) + offset_y * self.DRAW_SCALE
 
         hit_flash = self.hit_flash_remaining > 0 and image in (
             self.Idle_Animation, self.Player_Run, self.Normal_Attack,
-            self.Normal_Attack_Up, self.Normal_Attack_Down, self.quick_thrust_motion[self.dir],
+            self.Normal_Attack_Up, self.Normal_Attack_Down,
+            self.quick_thrust_motion[self.dir], self.horizontal_slash_motion[self.dir],
         )
         if hit_flash:
             SDL_SetTextureColorMod(image.texture, 255, 80, 80)
         if mirror_left and self.dir == self.LEFT:
             image.clip_composite_draw(
-                left, bottom, cell_width, cell_height, 0, 'h', self.x, draw_y, draw_width, draw_height)
+                left, bottom, cell_width, cell_height, 0, 'h', draw_x, draw_y, draw_width, draw_height)
         else:
             image.clip_draw(
-                left, bottom, cell_width, cell_height, self.x, draw_y, draw_width, draw_height)
+                left, bottom, cell_width, cell_height, draw_x, draw_y, draw_width, draw_height)
         if hit_flash:
             SDL_SetTextureColorMod(image.texture, 255, 255, 255)
