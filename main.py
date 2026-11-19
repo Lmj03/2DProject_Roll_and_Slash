@@ -14,6 +14,7 @@ from collision import can_walk_in_lobby
 from lobby_map import CANVAS_WIDTH, CANVAS_HEIGHT
 
 TARGET_FPS = 60
+COMBAT_STEP = 1.0 / 60.0
 
 
 class LobbySprite:
@@ -67,6 +68,8 @@ def advance_simulation(player, dice_ui, delta_time, can_move=can_walk_in_lobby, 
     while remaining > 0:
         # Bound movement during contact checks, including slow frames and speed buffs.
         step = min(remaining, campfire.SIMULATION_STEP) if campfire is not None else remaining
+        if dummy is not None:
+            step = min(step, COMBAT_STEP)
         for slot in (dice_ui.sword, dice_ui.buff):
             if slot.roll_elapsed is not None:
                 step = min(step, max(1e-9, slot.ROLL_DURATION - slot.roll_elapsed))
@@ -74,6 +77,7 @@ def advance_simulation(player, dice_ui, delta_time, can_move=can_walk_in_lobby, 
         player.update(step, can_step if dummy is not None else can_move)
         if dummy is not None:
             dummy.update(step)
+            dummy.check_attack(player)
         dice_ui.update(step)
         if campfire is not None:
             campfire.update(step)

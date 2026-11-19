@@ -51,6 +51,7 @@ class player:
         self._animation_time = 0.0
         self._attack_key_down = False
         self.attack_combo = 0
+        self.attack_id = 0
         self.renderer = PlayerRenderer()
         self.dir = self.UP
         self.pressed_keys = set()
@@ -105,6 +106,8 @@ class player:
     def _reset_animation(self):
         self.frame = 0
         self._animation_time = 0.0
+        if self.state in self.ATTACK_STATES:
+            self.attack_id += 1
 
     def reset_inputs(self):
         self.pressed_keys.clear()

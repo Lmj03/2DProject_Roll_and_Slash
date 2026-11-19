@@ -20,12 +20,18 @@ class TrainingDummy:
                                    self.x + 24, self.foot_y + 82)
         self.movement_box = footprint.expanded(FOOT_RADIUS)
         self._hit_time = None
+        self._last_attack_id = None
 
     def blocks(self, x, foot_y):
         return self.movement_box.contains(x, foot_y)
 
-    def receive_hit(self):
-        self._hit_time = 0.0
+    def check_attack(self, player):
+        if player.attack_id == self._last_attack_id:
+            return
+        attack = player.renderer.attack_box(player)
+        if attack is not None and attack.overlaps(self.hurtbox):
+            self._last_attack_id = player.attack_id
+            self._hit_time = 0.0
 
     def update(self, delta_time):
         if self._hit_time is not None:
