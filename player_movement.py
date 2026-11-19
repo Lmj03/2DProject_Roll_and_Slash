@@ -4,6 +4,7 @@ from pico2d import SDLK_DOWN, SDLK_LEFT, SDLK_RIGHT, SDLK_UP
 
 
 UP, RIGHT, DOWN, LEFT = range(4)
+FACING_AXES = {UP: (0, 1), RIGHT: (1, 0), DOWN: (0, -1), LEFT: (-1, 0)}
 MOVEMENT_KEYS = frozenset({SDLK_UP, SDLK_RIGHT, SDLK_DOWN, SDLK_LEFT})
 
 

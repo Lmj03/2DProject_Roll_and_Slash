@@ -55,6 +55,7 @@ class PlayerRenderer:
         self.sword_skill_sheets = {
             'QUICK_THRUST': self._load_sword_skill_sheets('quick_thrust'),
             'HORIZONTAL_SLASH': self._load_sword_skill_sheets('horizontal_slash'),
+            'DASH_CHOP': self._load_sword_skill_sheets('dash_chop'),
         }
 
     def _load_sword_skill_sheets(self, skill):

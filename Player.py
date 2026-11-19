@@ -18,8 +18,11 @@ class player:
     SWORD_SKILL_TIMINGS = {
         'QUICK_THRUST': (0.05, 6),        # Frame time in seconds, frame count.
         'HORIZONTAL_SLASH': (0.065, 6),
+        'DASH_CHOP': (0.06, 8),
     }
     ATTACK_STATES = ('ATTACK', *SWORD_SKILL_TIMINGS)
+    DASH_CHOP_DISTANCE = 96.0  # World pixels on open ground.
+    DASH_CHOP_MOVE_FRAMES = (2, 4)  # Start moving on frame 2 and plant the feet on frame 4.
     # Temporary animation preview mode. Keep enabled until removal is requested.
     ALLOW_SKILLS_WITHOUT_STACKS = True
     ANIMATION_EPSILON = 1e-9  # Tolerance for floating-point frame boundaries.
@@ -62,6 +65,7 @@ class player:
                 {'trigger': 'start_attack', 'source': ['IDLE', 'RUN'], 'dest': 'ATTACK'},
                 {'trigger': 'start_quick_thrust', 'source': ['IDLE', 'RUN'], 'dest': 'QUICK_THRUST'},
                 {'trigger': 'start_horizontal_slash', 'source': ['IDLE', 'RUN'], 'dest': 'HORIZONTAL_SLASH'},
+                {'trigger': 'start_dash_chop', 'source': ['IDLE', 'RUN'], 'dest': 'DASH_CHOP'},
                 {'trigger': 'stop_attack', 'source': list(self.ATTACK_STATES), 'dest': 'IDLE'},
             ],
             initial='IDLE',
@@ -122,7 +126,7 @@ class player:
 
         if event.type == SDL_KEYDOWN and SDLK_1 <= event.key <= SDLK_6:
             index = event.key - SDLK_1
-            skill_starters = (self.start_quick_thrust, self.start_horizontal_slash)
+            skill_starters = (self.start_quick_thrust, self.start_horizontal_slash, self.start_dash_chop)
             if index < len(skill_starters):
                 self._try_sword_skill(index, skill_starters[index])
             elif self.sword_stacks[index] > 0:
@@ -186,6 +190,8 @@ class player:
         if self.state in self.ATTACK_STATES:
             normal_attack = self.state == 'ATTACK'
             frame_time, frame_count = self.SWORD_SKILL_TIMINGS.get(self.state, (self.ATTACK_FRAME_TIME, 10))
+            if self.state == 'DASH_CHOP':
+                self._advance_dash_chop(delta_time, frame_time, can_move)
             duration = frame_time * frame_count
             if self._animation_time < duration - self.ANIMATION_EPSILON:
                 self.frame = int((self._animation_time + self.ANIMATION_EPSILON) / frame_time)
@@ -200,16 +206,29 @@ class player:
             self._animation_time = delta_time
 
         if self.state == 'RUN':
-            self.x, self.y = movement.move_position(
-                (self.x, self.y), (self.move_x, self.move_y), self.move_speed * delta_time,
-                can_move=can_move, foot_offset_y=self.FOOT_OFFSET_Y, max_step=self.MAX_MOVE_STEP,
-            )
+            self._move_along((self.move_x, self.move_y), self.move_speed * delta_time, can_move)
             frame_time, frame_count = self.RUN_FRAME_TIME, 10
         else:
             frame_time, frame_count = self.IDLE_FRAME_TIME, 6
 
         self._animation_time %= frame_time * frame_count
         self.frame = int((self._animation_time + self.ANIMATION_EPSILON) / frame_time) % frame_count
+
+    def _advance_dash_chop(self, delta_time, frame_time, can_move):
+        start_frame, plant_frame = self.DASH_CHOP_MOVE_FRAMES
+        start_time = start_frame * frame_time
+        plant_time = plant_frame * frame_time
+        # Count only the part of the update spent dashing, including slow frames.
+        dash_time = min(self._animation_time, plant_time) - max(self._animation_time - delta_time, start_time)
+        if dash_time > 0:
+            distance = self.DASH_CHOP_DISTANCE * dash_time / (plant_time - start_time)
+            self._move_along(movement.FACING_AXES[self.dir], distance, can_move)
+
+    def _move_along(self, axes, distance, can_move):
+        self.x, self.y = movement.move_position(
+            (self.x, self.y), axes, distance,
+            can_move=can_move, foot_offset_y=self.FOOT_OFFSET_Y, max_step=self.MAX_MOVE_STEP,
+        )
 
     def draw(self):
         self.renderer.draw(self)
