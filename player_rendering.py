@@ -65,13 +65,15 @@ class PlayerRenderer:
         self.shadow = load_image('asset/player_shadow.png')
         with (ASSET_DIR / 'player_body_bounds.json').open(encoding='utf-8') as bounds_file:
             self._bounds_by_path = load(bounds_file)
+        with (ASSET_DIR / 'player_attack_bounds.json').open(encoding='utf-8') as bounds_file:
+            self._bounds_by_path.update(load(bounds_file))
         self._bounds_by_image = {}
         self.idle = self._load_sprite('asset/Player_Idle.png')
         self.run = self._load_sprite('asset/Run.png')
         self.attack_sheets = {
-            UP: (self._load_sprite('asset/attack_up.png'), load_image('asset/attack_up_trail.png')),
-            DOWN: (self._load_sprite('asset/attack_down.png'), load_image('asset/attack_down_trail.png')),
-            RIGHT: (self._load_sprite('asset/attack_sheet.png'), load_image('asset/attack_trail.png')),
+            UP: (self._load_sprite('asset/attack_up.png'), self._load_sprite('asset/attack_up_trail.png')),
+            DOWN: (self._load_sprite('asset/attack_down.png'), self._load_sprite('asset/attack_down_trail.png')),
+            RIGHT: (self._load_sprite('asset/attack_sheet.png'), self._load_sprite('asset/attack_trail.png')),
         }
         self.sword_skill_sheets = {
             'QUICK_THRUST': self._load_sword_skill_sheets('quick_thrust'),
@@ -92,7 +94,7 @@ class PlayerRenderer:
             path = f'asset/skills/{skill}/{skill}_{name}'
             sheets[direction] = (
                 self._load_sprite(f'{path}_motion_100x100.png'),
-                load_image(f'{path}_fx_{width}x{height}.png'),
+                self._load_sprite(f'{path}_fx_{width}x{height}.png'),
             )
         return sheets
 
@@ -187,6 +189,13 @@ class PlayerRenderer:
 
     def body_box(self, player):
         return self._world_bounds(player, self._body_frame(player))
+
+    def attack_box(self, player):
+        # Dash streaks show movement. The final downward strike is the damaging frame.
+        if player.state == 'DASH_CHOP' and player.frame != 5:
+            return None
+        trail = self._trail_frame(player)
+        return self._world_bounds(player, trail) if trail is not None else None
 
     def _draw_frame(self, player, sprite, *, tint_on_hit):
         left = player.frame * sprite.width
