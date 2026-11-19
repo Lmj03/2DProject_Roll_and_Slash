@@ -1,11 +1,28 @@
+from dataclasses import dataclass
+from json import load
+from pathlib import Path
+
 from pico2d import load_font, load_image
 from sdl2 import SDL_SetTextureColorMod
 
+from bounding_box import BoundingBox
 from player_movement import DOWN, FACING_AXES, LEFT, RIGHT, UP
 
 
 # Down attack poses are wider than the matching idle and run sprites.
 DOWN_ATTACK_WIDTH_SCALE = 0.86
+ASSET_DIR = Path(__file__).resolve().parent / 'asset'
+
+
+@dataclass(frozen=True)
+class SpriteFrame:
+    image: object
+    row: int = 0
+    width: int = 100
+    height: int = 100
+    width_scale: float = 1.0
+    mirror_left: bool = True
+    offset: tuple = (0, 0)
 
 
 class PlayerRenderer:
@@ -46,12 +63,15 @@ class PlayerRenderer:
     def __init__(self):
         self.damage_font = load_font('asset/fonts/SourceCodePro-Bold.ttf', 16)
         self.shadow = load_image('asset/player_shadow.png')
-        self.idle = load_image('asset/Player_Idle.png')
-        self.run = load_image('asset/Run.png')
+        with (ASSET_DIR / 'player_body_bounds.json').open(encoding='utf-8') as bounds_file:
+            self._bounds_by_path = load(bounds_file)
+        self._bounds_by_image = {}
+        self.idle = self._load_sprite('asset/Player_Idle.png')
+        self.run = self._load_sprite('asset/Run.png')
         self.attack_sheets = {
-            UP: (load_image('asset/attack_up.png'), load_image('asset/attack_up_trail.png')),
-            DOWN: (load_image('asset/attack_down.png'), load_image('asset/attack_down_trail.png')),
-            RIGHT: (load_image('asset/attack_sheet.png'), load_image('asset/attack_trail.png')),
+            UP: (self._load_sprite('asset/attack_up.png'), load_image('asset/attack_up_trail.png')),
+            DOWN: (self._load_sprite('asset/attack_down.png'), load_image('asset/attack_down_trail.png')),
+            RIGHT: (self._load_sprite('asset/attack_sheet.png'), load_image('asset/attack_trail.png')),
         }
         self.sword_skill_sheets = {
             'QUICK_THRUST': self._load_sword_skill_sheets('quick_thrust'),
@@ -59,13 +79,19 @@ class PlayerRenderer:
             'DASH_CHOP': self._load_sword_skill_sheets('dash_chop'),
         }
 
+    def _load_sprite(self, path):
+        image = load_image(path)
+        if path in self._bounds_by_path:
+            self._bounds_by_image[image] = self._bounds_by_path[path]
+        return image
+
     def _load_sword_skill_sheets(self, skill):
         sheets = {}
         for direction, name in ((UP, 'up'), (DOWN, 'down'), (LEFT, 'left'), (RIGHT, 'right')):
             width, height = self._trail_cell_size(direction)
             path = f'asset/skills/{skill}/{skill}_{name}'
             sheets[direction] = (
-                load_image(f'{path}_motion_100x100.png'),
+                self._load_sprite(f'{path}_motion_100x100.png'),
                 load_image(f'{path}_fx_{width}x{height}.png'),
             )
         return sheets
@@ -76,13 +102,10 @@ class PlayerRenderer:
 
     def draw(self, player):
         self._draw_shadow(player)
-        if player.state in ('IDLE', 'RUN'):
-            image = self.idle if player.state == 'IDLE' else self.run
-            self._draw_frame(player, image, self.ANIMATION_ROWS[player.dir])
-        elif player.state == 'ATTACK':
-            self._draw_attack(player)
-        elif player.state in self.sword_skill_sheets:
-            self._draw_sword_skill(player)
+        self._draw_frame(player, self._body_frame(player), tint_on_hit=True)
+        trail = self._trail_frame(player)
+        if trail is not None:
+            self._draw_frame(player, trail, tint_on_hit=False)
         self._draw_damage_popups(player)
 
     def _draw_damage_popups(self, player):
@@ -108,48 +131,73 @@ class PlayerRenderer:
             y += (player.FOOT_OFFSET_Y - depth) * self.DRAW_SCALE
         self.shadow.draw(x, y, 54, 8)
 
-    def _draw_attack(self, player):
-        direction = RIGHT if player.dir == LEFT else player.dir
-        motion, trail = self.attack_sheets[direction]
-        cell_width, cell_height = self._trail_cell_size(direction)
-        width_scale = DOWN_ATTACK_WIDTH_SCALE if direction == DOWN else 1
-        self._draw_frame(player, motion, player.attack_combo, width_scale=width_scale)
-        self._draw_frame(player, trail, player.attack_combo, cell_width, cell_height,
-                         width_scale=width_scale, tint_on_hit=False)
+    def _body_frame(self, player):
+        if player.state == 'ATTACK':
+            direction = RIGHT if player.dir == LEFT else player.dir
+            motion, _ = self.attack_sheets[direction]
+            scale = DOWN_ATTACK_WIDTH_SCALE if direction == DOWN else 1
+            return SpriteFrame(motion, row=player.attack_combo, width_scale=scale)
+        if player.state in self.sword_skill_sheets:
+            motion, _ = self.sword_skill_sheets[player.state][player.dir]
+            return SpriteFrame(motion, mirror_left=False)
+        image = self.run if player.state == 'RUN' else self.idle
+        return SpriteFrame(image, row=self.ANIMATION_ROWS[player.dir])
 
-    def _draw_sword_skill(self, player):
-        motion, trail = self.sword_skill_sheets[player.state][player.dir]
-        cell_width, cell_height = self._trail_cell_size(player.dir)
+    def _trail_frame(self, player):
+        width, height = self._trail_cell_size(player.dir)
+        if player.state == 'ATTACK':
+            direction = RIGHT if player.dir == LEFT else player.dir
+            _, trail = self.attack_sheets[direction]
+            scale = DOWN_ATTACK_WIDTH_SCALE if direction == DOWN else 1
+            return SpriteFrame(trail, row=player.attack_combo, width=width, height=height,
+                               width_scale=scale)
+        if player.state not in self.sword_skill_sheets:
+            return None
+        _, trail = self.sword_skill_sheets[player.state][player.dir]
         offset = (0, 0)
         if player.state == 'HORIZONTAL_SLASH':
             offset = self.HORIZONTAL_SLASH_TRAIL_OFFSETS.get(player.dir, (0, 0))
         elif player.state == 'DASH_CHOP' and 4 <= player.frame <= 6:
-            # Move the descending trail and impact, after the charging frames.
             dx, dy = FACING_AXES[player.dir]
             distance = self.DASH_CHOP_TRAIL_ADVANCE / self.DRAW_SCALE
             offset = (dx * distance, dy * distance)
-        # These skills have separate left-facing sheets.
-        self._draw_frame(player, motion, 0, mirror_left=False)
-        self._draw_frame(player, trail, 0, cell_width, cell_height, mirror_left=False,
-                         offset=offset, tint_on_hit=False)
+        return SpriteFrame(trail, width=width, height=height, mirror_left=False, offset=offset)
 
-    def _draw_frame(self, player, image, row, cell_width=100, cell_height=100, *, width_scale=1,
-                    mirror_left=True, offset=(0, 0), tint_on_hit=True):
-        left = player.frame * cell_width
-        bottom = row * cell_height
-        draw_width = round(cell_width * self.DRAW_SCALE * width_scale)
-        draw_height = round(cell_height * self.DRAW_SCALE)
-        offset_x, offset_y = offset
-        draw_x = player.x + offset_x * self.DRAW_SCALE
-        draw_y = player.y + player.FOOT_OFFSET_Y * (self.DRAW_SCALE - 1) + offset_y * self.DRAW_SCALE
+    def _placement(self, player, sprite):
+        offset_x, offset_y = sprite.offset
+        x = player.x + offset_x * self.DRAW_SCALE
+        y = player.y + player.FOOT_OFFSET_Y * (self.DRAW_SCALE - 1) + offset_y * self.DRAW_SCALE
+        w = round(sprite.width * self.DRAW_SCALE * sprite.width_scale)
+        h = round(sprite.height * self.DRAW_SCALE)
+        mirror = sprite.mirror_left and player.dir == LEFT
+        return x, y, w, h, mirror
 
+    def _world_bounds(self, player, sprite):
+        local = self._bounds_by_image[sprite.image][sprite.row][player.frame]
+        if local is None:
+            return None
+        left, bottom, right, top = local
+        x, y, w, h, mirror = self._placement(player, sprite)
+        if mirror:
+            left, right = sprite.width - right, sprite.width - left
+        origin_x, origin_y = x - w / 2, y - h / 2
+        sx, sy = w / sprite.width, h / sprite.height
+        return BoundingBox(origin_x + left * sx, origin_y + bottom * sy,
+                           origin_x + right * sx, origin_y + top * sy)
+
+    def body_box(self, player):
+        return self._world_bounds(player, self._body_frame(player))
+
+    def _draw_frame(self, player, sprite, *, tint_on_hit):
+        left = player.frame * sprite.width
+        bottom = sprite.row * sprite.height
+        x, y, w, h, mirror = self._placement(player, sprite)
         hit_flash = tint_on_hit and player.hit_flash_remaining > 0
         if hit_flash:
-            SDL_SetTextureColorMod(image.texture, 255, 80, 80)
-        if mirror_left and player.dir == LEFT:
-            image.clip_composite_draw(
-                left, bottom, cell_width, cell_height, 0, 'h', draw_x, draw_y, draw_width, draw_height)
+            SDL_SetTextureColorMod(sprite.image.texture, 255, 80, 80)
+        if mirror:
+            sprite.image.clip_composite_draw(left, bottom, sprite.width, sprite.height, 0, 'h', x, y, w, h)
         else:
-            image.clip_draw(left, bottom, cell_width, cell_height, draw_x, draw_y, draw_width, draw_height)
+            sprite.image.clip_draw(left, bottom, sprite.width, sprite.height, x, y, w, h)
         if hit_flash:
-            SDL_SetTextureColorMod(image.texture, 255, 255, 255)
+            SDL_SetTextureColorMod(sprite.image.texture, 255, 255, 255)
