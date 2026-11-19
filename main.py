@@ -10,11 +10,13 @@ from dice_ui import DiceRollUI
 from well_interaction import WellInteraction
 from campfire import Campfire
 from training_dummy import TrainingDummy
+from collision_debug import CollisionDebug
 from collision import can_walk_in_lobby
 from lobby_map import CANVAS_WIDTH, CANVAS_HEIGHT
 
 TARGET_FPS = 60
 COMBAT_STEP = 1.0 / 60.0
+SHOW_COLLISION_BOXES = True
 
 
 class LobbySprite:
@@ -46,6 +48,8 @@ def create_lobby_world(player, dice_ui=None, well=None, campfire=None, dummy=Non
 
     for name, left, top in lobby_map.FOREGROUND_SPRITES:
         world.add(LobbySprite(name, left, top), game_world.FOREGROUND)
+    if SHOW_COLLISION_BOXES:
+        world.add(CollisionDebug(player, dummy), game_world.DEBUG)
     world.add(ui.HealthBar(player), game_world.UI)
     world.add(ui.SwordStackBar(player, right=CANVAS_WIDTH - 32), game_world.UI)
     if dice_ui is None:

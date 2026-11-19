@@ -1,9 +1,9 @@
-BACKGROUND, OBJECTS, FOREGROUND, UI = range(4)
+BACKGROUND, OBJECTS, FOREGROUND, DEBUG, UI = range(5)
 
 
 class GameWorld:
     def __init__(self):
-        self.layers = [[], [], [], []]
+        self.layers = [[] for _ in range(UI + 1)]
 
     def add(self, obj, layer, *, foot_y=None):
         self.layers[layer].append((obj, foot_y))
