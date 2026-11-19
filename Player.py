@@ -1,18 +1,15 @@
-from math import ceil, isfinite, sqrt
+from math import isfinite
 
-from pico2d import *
+from pico2d import SDL_KEYDOWN, SDL_KEYUP, SDLK_1, SDLK_6, SDLK_a
 from transitions import Machine
-from sdl2 import SDL_SetTextureColorMod
 
 from buffs import BuffState
+import player_movement as movement
+from player_rendering import DOWN_ATTACK_WIDTH_SCALE, PlayerRenderer
 
-# Down attack poses are wider than the matching idle and run sprites.
-DOWN_ATTACK_WIDTH_SCALE = 0.86
 
 class player:
-    UP, RIGHT, DOWN, LEFT = range(4)
-    KEY_INPUTS = {SDLK_UP, SDLK_RIGHT, SDLK_DOWN, SDLK_LEFT}
-    ANIMATION_ROWS = {UP: 0, RIGHT: 2, DOWN: 4, LEFT: 2}
+    UP, RIGHT, DOWN, LEFT = movement.UP, movement.RIGHT, movement.DOWN, movement.LEFT
     MOVE_SPEED = 360.0  # Pixels per second.
     MAX_MOVE_STEP = 6.0
     IDLE_FRAME_TIME = 0.1
@@ -23,50 +20,18 @@ class player:
         'HORIZONTAL_SLASH': (0.065, 6),
     }
     ATTACK_STATES = ('ATTACK', *SWORD_SKILL_TIMINGS)
-    # Offsets in source pixels, using Pico2d's bottom-left coordinates.
-    HORIZONTAL_SLASH_TRAIL_OFFSETS = {DOWN: (0, -18), LEFT: (-18, 0), RIGHT: (18, 0)}
     # Temporary animation preview mode. Keep enabled until removal is requested.
     ALLOW_SKILLS_WITHOUT_STACKS = True
     ANIMATION_EPSILON = 1e-9  # Tolerance for floating-point frame boundaries.
-    DRAW_SCALE = 1.2
     HIT_FLASH_TIME = 0.16
     DAMAGE_POPUP_TIME = 0.65
-    DAMAGE_POPUP_RISE = 24
     FOOT_OFFSET_Y = 36  # Distance below the center of an unscaled sprite.
-    # (x offset, depth below cell center) in original sprite pixels, indexed by combo and frame.
-    ATTACK_SHADOW_CONTACTS = {
-        RIGHT: (
-            ((-6, 34), (-10, 34), (-8, 32), (-15, 34), (-7, 32),
-             (-11, 34), (-8, 34), (-7, 32), (-4, 32), (-2, 32)),
-            ((-10, 28), (-4, 30), (-2, 30), (-2, 30), (2, 30),
-             (6, 32), (6, 30), (6, 30), (5, 32), (7, 32)),
-            ((-4, 30), (-17, 32), (-14, 36), (-10, 36), (-8, 38),
-             (-4, 40), (-8, 32), (-8, 20), (-8, 22), (-12, 22)),
-        ),
-        UP: (
-            ((3, 36), (-2, 36), (1, 36), (4, 36), (6, 44),
-             (10, 42), (-9, 38), (-6, 36), (-1, 36), (2, 36)),
-            ((-13, 36), (-5, 38), (-2, 36), (-2, 36), (5, 36),
-             (6, 46), (8, 46), (6, 44), (8, 44), (4, 44)),
-            ((3, 36), (1, 36), (3, 36), (1, 44), (3, 44),
-             (3, 44), (5, 44), (-4, 36), (-13, 36), (-11, 36)),
-        ),
-        DOWN: (
-            ((2, 38), (4, 38), (4, 38), (3, 38), (4, 38),
-             (4, 38), (5, 38), (5, 38), (5, 38), (5, 38)),
-            ((2, 38), (1, 38), (5, 36), (4, 36), (4, 38),
-             (4, 38), (3, 36), (4, 46), (4, 46), (5, 46)),
-            ((-3, 36), (-4, 36), (-2, 38), (-3, 44), (-4, 44),
-             (-4, 46), (-1, 40), (1, 32), (3, 34), (4, 32)),
-        ),
-    }
 
     def __init__(self):
         self.max_hp = 100
         self.hp = self.max_hp
         self.hit_flash_remaining = 0.0
         self.damage_popups = []
-        self.damage_font = load_font('asset/fonts/SourceCodePro-Bold.ttf', 16)
         self.buffs = BuffState()
         self.base_attack_power = 50
         self.base_crit_chance = 0.30  # Probability from 0 to 1.
@@ -83,17 +48,7 @@ class player:
         self._animation_time = 0.0
         self._attack_key_down = False
         self.attack_combo = 0
-        self.shadow = load_image('asset/player_shadow.png')
-        self.Normal_Attack = load_image('asset/attack_sheet.png')
-        self.Attack_Trail = load_image('asset/attack_trail.png')
-        self.Normal_Attack_Up = load_image('asset/attack_up.png')
-        self.Normal_Attack_Down = load_image('asset/attack_down.png')
-        self.Attack_Trail_Up = load_image('asset/attack_up_trail.png')
-        self.Attack_Trail_Down = load_image('asset/attack_down_trail.png')
-        self.Idle_Animation = load_image('asset/Player_Idle.png')
-        self.Player_Run = load_image('asset/Run.png')
-        self.quick_thrust_motion, self.quick_thrust_trail = self._load_sword_skill_sheets('quick_thrust')
-        self.horizontal_slash_motion, self.horizontal_slash_trail = self._load_sword_skill_sheets('horizontal_slash')
+        self.renderer = PlayerRenderer()
         self.dir = self.UP
         self.pressed_keys = set()
         self.move_x = 0
@@ -113,17 +68,6 @@ class player:
             auto_transitions=False,
             after_state_change='_reset_animation',
         )
-
-    def _load_sword_skill_sheets(self, skill):
-        motion = {}
-        trail = {}
-        for direction, name in ((self.UP, 'up'), (self.DOWN, 'down'),
-                                (self.LEFT, 'left'), (self.RIGHT, 'right')):
-            size = '100x180' if direction in (self.UP, self.DOWN) else '180x100'
-            path = f'asset/skills/{skill}/{skill}_{name}'
-            motion[direction] = load_image(f'{path}_motion_100x100.png')
-            trail[direction] = load_image(f'{path}_fx_{size}.png')
-        return motion, trail
 
     def take_damage(self, amount):
         """Apply already-resolved damage and return the actual HP lost."""
@@ -157,7 +101,7 @@ class player:
     def _reset_animation(self):
         self.frame = 0
         self._animation_time = 0.0
-        
+
     def reset_inputs(self):
         self.pressed_keys.clear()
         self._attack_key_down = False
@@ -185,9 +129,9 @@ class player:
                 self.sword_stacks[index] -= 1
             return
 
-        if event.key not in self.KEY_INPUTS:
+        if event.key not in movement.MOVEMENT_KEYS:
             return
-        
+
         if event.type == SDL_KEYDOWN:
             self.pressed_keys.add(event.key)
         else:
@@ -208,8 +152,7 @@ class player:
             self.sword_stacks[index] -= 1
 
     def _sync_movement(self):
-        self.move_x = (SDLK_RIGHT in self.pressed_keys) - (SDLK_LEFT in self.pressed_keys)
-        self.move_y = (SDLK_UP in self.pressed_keys) - (SDLK_DOWN in self.pressed_keys)
+        self.move_x, self.move_y = movement.movement_axes(self.pressed_keys)
         if self.move_x or self.move_y:
             if self.move_x:
                 self.dir = self.RIGHT if self.move_x > 0 else self.LEFT
@@ -219,7 +162,7 @@ class player:
                 self.start_running()
         elif self.state == 'RUN':
             self.stop_running()
-            
+
     def update(self, delta_time, can_move=None):
         if delta_time <= 0:
             return
@@ -257,7 +200,10 @@ class player:
             self._animation_time = delta_time
 
         if self.state == 'RUN':
-            self._move(delta_time, can_move)
+            self.x, self.y = movement.move_position(
+                (self.x, self.y), (self.move_x, self.move_y), self.move_speed * delta_time,
+                can_move=can_move, foot_offset_y=self.FOOT_OFFSET_Y, max_step=self.MAX_MOVE_STEP,
+            )
             frame_time, frame_count = self.RUN_FRAME_TIME, 10
         else:
             frame_time, frame_count = self.IDLE_FRAME_TIME, 6
@@ -265,106 +211,5 @@ class player:
         self._animation_time %= frame_time * frame_count
         self.frame = int((self._animation_time + self.ANIMATION_EPSILON) / frame_time) % frame_count
 
-    def _move(self, delta_time, can_move):
-        distance = self.move_speed * delta_time
-        # Test the whole path in small steps so a slow frame cannot skip a wall.
-        steps = max(1, ceil(distance / self.MAX_MOVE_STEP))
-        step = distance / steps
-        if self.move_x and self.move_y:
-            step /= sqrt(2)
-
-        for _ in range(steps):
-            old_x, old_y = self.x, self.y
-            next_x = self.x + self.move_x * step
-            next_y = self.y + self.move_y * step
-            if can_move is None or can_move(next_x, self.y - self.FOOT_OFFSET_Y):
-                self.x = next_x
-            if can_move is None or can_move(self.x, next_y - self.FOOT_OFFSET_Y):
-                self.y = next_y
-            if self.x == old_x and self.y == old_y:
-                break
-            
     def draw(self):
-        self._draw_shadow()
-        if self.state == 'IDLE':
-            self._draw_frame(self.Idle_Animation, self.ANIMATION_ROWS[self.dir])
-        elif self.state == 'RUN':
-            self._draw_frame(self.Player_Run, self.ANIMATION_ROWS[self.dir])
-        elif self.state == 'ATTACK':
-            self._draw_attack()
-        elif self.state == 'QUICK_THRUST':
-            self._draw_sword_skill(self.quick_thrust_motion, self.quick_thrust_trail)
-        elif self.state == 'HORIZONTAL_SLASH':
-            offset = self.HORIZONTAL_SLASH_TRAIL_OFFSETS.get(self.dir, (0, 0))
-            self._draw_sword_skill(self.horizontal_slash_motion, self.horizontal_slash_trail,
-                                   trail_offset=offset)
-        self._draw_damage_popups()
-
-    def _draw_damage_popups(self):
-        for popup in self.damage_popups:
-            progress = 1.0 - popup['remaining'] / self.DAMAGE_POPUP_TIME
-            text = f"-{popup['damage']:g}"
-            x = popup['x'] - len(text) * 5
-            y = popup['y'] + self.DAMAGE_POPUP_RISE * progress
-            self.damage_font.draw(x + 1, y - 1, text, (35, 7, 5))
-            self.damage_font.draw(x, y, text, (255, 95, 64))
-
-    def _draw_shadow(self):
-        x = self.x
-        y = self.y - self.FOOT_OFFSET_Y
-        if self.state == 'ATTACK':
-            direction = self.RIGHT if self.dir == self.LEFT else self.dir
-            offset_x, depth = self.ATTACK_SHADOW_CONTACTS[direction][self.attack_combo][self.frame]
-            if self.dir == self.LEFT:
-                offset_x = -offset_x
-            elif direction == self.DOWN:
-                offset_x *= DOWN_ATTACK_WIDTH_SCALE
-            x += offset_x * self.DRAW_SCALE
-            y += (self.FOOT_OFFSET_Y - depth) * self.DRAW_SCALE
-        self.shadow.draw(x, y, 54, 8)
-
-    def _draw_attack(self):
-        if self.dir == self.UP:
-            self._draw_frame(self.Normal_Attack_Up, self.attack_combo)
-            self._draw_frame(self.Attack_Trail_Up, self.attack_combo, cell_height=180)
-        elif self.dir == self.DOWN:
-            self._draw_frame(self.Normal_Attack_Down, self.attack_combo,
-                             width_scale=DOWN_ATTACK_WIDTH_SCALE)
-            self._draw_frame(self.Attack_Trail_Down, self.attack_combo, cell_height=180,
-                             width_scale=DOWN_ATTACK_WIDTH_SCALE)
-        else:
-            self._draw_frame(self.Normal_Attack, self.attack_combo)
-            self._draw_frame(self.Attack_Trail, self.attack_combo, cell_width=180)
-
-    def _draw_sword_skill(self, motion, trail, *, trail_offset=(0, 0)):
-        cell_width, cell_height = (100, 180) if self.dir in (self.UP, self.DOWN) else (180, 100)
-        # The left-facing sheets already contain mirrored frames.
-        self._draw_frame(motion[self.dir], 0, mirror_left=False)
-        self._draw_frame(trail[self.dir], 0, cell_width, cell_height, mirror_left=False,
-                         offset=trail_offset)
-
-    def _draw_frame(self, image, row, cell_width=100, cell_height=100, *, width_scale=1,
-                    mirror_left=True, offset=(0, 0)):
-        left = self.frame * cell_width
-        bottom = row * cell_height
-        draw_width = round(cell_width * self.DRAW_SCALE * width_scale)
-        draw_height = round(cell_height * self.DRAW_SCALE)
-        offset_x, offset_y = offset
-        draw_x = self.x + offset_x * self.DRAW_SCALE
-        draw_y = self.y + self.FOOT_OFFSET_Y * (self.DRAW_SCALE - 1) + offset_y * self.DRAW_SCALE
-
-        hit_flash = self.hit_flash_remaining > 0 and image in (
-            self.Idle_Animation, self.Player_Run, self.Normal_Attack,
-            self.Normal_Attack_Up, self.Normal_Attack_Down,
-            self.quick_thrust_motion[self.dir], self.horizontal_slash_motion[self.dir],
-        )
-        if hit_flash:
-            SDL_SetTextureColorMod(image.texture, 255, 80, 80)
-        if mirror_left and self.dir == self.LEFT:
-            image.clip_composite_draw(
-                left, bottom, cell_width, cell_height, 0, 'h', draw_x, draw_y, draw_width, draw_height)
-        else:
-            image.clip_draw(
-                left, bottom, cell_width, cell_height, draw_x, draw_y, draw_width, draw_height)
-        if hit_flash:
-            SDL_SetTextureColorMod(image.texture, 255, 255, 255)
+        self.renderer.draw(self)
