@@ -18,6 +18,11 @@ class player:
     IDLE_FRAME_TIME = 0.1
     RUN_FRAME_TIME = 0.02
     ATTACK_FRAME_TIME = 0.05
+    ATTACK_STATES = ('ATTACK', 'QUICK_THRUST')
+    QUICK_THRUST_FRAME_TIME = 0.05
+    QUICK_THRUST_FRAME_COUNT = 6
+    # Temporary animation preview mode. Keep enabled until removal is requested.
+    ALLOW_SKILLS_WITHOUT_STACKS = True
     ANIMATION_EPSILON = 1e-9  # Tolerance for floating-point frame boundaries.
     DRAW_SCALE = 1.2
     HIT_FLASH_TIME = 0.16
@@ -83,18 +88,29 @@ class player:
         self.Attack_Trail_Down = load_image('asset/attack_down_trail.png')
         self.Idle_Animation = load_image('asset/Player_Idle.png')
         self.Player_Run = load_image('asset/Run.png')
+        skill_path = 'asset/skills/quick_thrust'
+        self.quick_thrust_motion = {}
+        self.quick_thrust_trail = {}
+        for direction, name in ((self.UP, 'up'), (self.DOWN, 'down'),
+                                (self.LEFT, 'left'), (self.RIGHT, 'right')):
+            size = '100x180' if direction in (self.UP, self.DOWN) else '180x100'
+            self.quick_thrust_motion[direction] = load_image(
+                f'{skill_path}/quick_thrust_{name}_motion_100x100.png')
+            self.quick_thrust_trail[direction] = load_image(
+                f'{skill_path}/quick_thrust_{name}_fx_{size}.png')
         self.dir = self.UP
         self.pressed_keys = set()
         self.move_x = 0
         self.move_y = 0
         self.machine = Machine(
             model=self,
-            states=['IDLE', 'RUN','ATTACK'],
+            states=['IDLE', 'RUN', *self.ATTACK_STATES],
             transitions=[
                 {'trigger': 'start_running', 'source': 'IDLE', 'dest': 'RUN'},
                 {'trigger': 'stop_running', 'source': 'RUN', 'dest': 'IDLE'},
                 {'trigger': 'start_attack', 'source': ['IDLE', 'RUN'], 'dest': 'ATTACK'},
-                {'trigger': 'stop_attack', 'source': 'ATTACK', 'dest': 'IDLE'},
+                {'trigger': 'start_quick_thrust', 'source': ['IDLE', 'RUN'], 'dest': 'QUICK_THRUST'},
+                {'trigger': 'stop_attack', 'source': list(self.ATTACK_STATES), 'dest': 'IDLE'},
             ],
             initial='IDLE',
             auto_transitions=False,
@@ -152,6 +168,14 @@ class player:
                     self.start_attack()
             return
 
+        if event.type == SDL_KEYDOWN and SDLK_1 <= event.key <= SDLK_6:
+            index = event.key - SDLK_1
+            if index == 0:
+                self._try_quick_thrust()
+            elif self.sword_stacks[index] > 0:
+                self.sword_stacks[index] -= 1
+            return
+
         if event.key not in self.KEY_INPUTS:
             return
         
@@ -160,9 +184,19 @@ class player:
         else:
             self.pressed_keys.discard(event.key)
 
-        if self.state == 'ATTACK':
+        if self.state in self.ATTACK_STATES:
             return
         self._sync_movement()
+
+    def _try_quick_thrust(self):
+        if self.state not in ('IDLE', 'RUN'):
+            return
+        stacks = self.sword_stacks[0]
+        if stacks <= 0 and not self.ALLOW_SKILLS_WITHOUT_STACKS:
+            return
+        self.start_quick_thrust()
+        if stacks > 0:
+            self.sword_stacks[0] -= 1
 
     def _sync_movement(self):
         self.move_x = (SDLK_RIGHT in self.pressed_keys) - (SDLK_LEFT in self.pressed_keys)
@@ -197,18 +231,23 @@ class player:
 
     def _update_motion(self, delta_time, can_move):
         self._animation_time += delta_time
-        if self.state == 'ATTACK':
-            duration = self.ATTACK_FRAME_TIME * 10
+        if self.state in self.ATTACK_STATES:
+            quick_thrust = self.state == 'QUICK_THRUST'
+            if quick_thrust:
+                frame_time, frame_count = self.QUICK_THRUST_FRAME_TIME, self.QUICK_THRUST_FRAME_COUNT
+            else:
+                frame_time, frame_count = self.ATTACK_FRAME_TIME, 10
+            duration = frame_time * frame_count
             if self._animation_time < duration - self.ANIMATION_EPSILON:
-                self.frame = int((self._animation_time + self.ANIMATION_EPSILON)
-                                 / self.ATTACK_FRAME_TIME)
+                self.frame = int((self._animation_time + self.ANIMATION_EPSILON) / frame_time)
                 return
 
             # Use the rest of this frame after the attack for idle or resumed movement.
             delta_time = max(0.0, self._animation_time - duration)
             self.stop_attack()
             self._sync_movement()
-            self.attack_combo = (self.attack_combo + 1) % 3
+            if not quick_thrust:
+                self.attack_combo = (self.attack_combo + 1) % 3
             self._animation_time = delta_time
 
         if self.state == 'RUN':
@@ -247,6 +286,8 @@ class player:
             self._draw_frame(self.Player_Run, self.ANIMATION_ROWS[self.dir])
         elif self.state == 'ATTACK':
             self._draw_attack()
+        elif self.state == 'QUICK_THRUST':
+            self._draw_quick_thrust()
         self._draw_damage_popups()
 
     def _draw_damage_popups(self):
@@ -285,7 +326,15 @@ class player:
             self._draw_frame(self.Normal_Attack, self.attack_combo)
             self._draw_frame(self.Attack_Trail, self.attack_combo, cell_width=180)
 
-    def _draw_frame(self, image, row, cell_width=100, cell_height=100, *, width_scale=1):
+    def _draw_quick_thrust(self):
+        cell_width, cell_height = (100, 180) if self.dir in (self.UP, self.DOWN) else (180, 100)
+        # Directional sheets include left-facing frames. Draw both layers at the same center.
+        self._draw_frame(self.quick_thrust_motion[self.dir], 0, mirror_left=False)
+        self._draw_frame(self.quick_thrust_trail[self.dir], 0, cell_width, cell_height,
+                         mirror_left=False)
+
+    def _draw_frame(self, image, row, cell_width=100, cell_height=100, *, width_scale=1,
+                    mirror_left=True):
         left = self.frame * cell_width
         bottom = row * cell_height
         draw_width = round(cell_width * self.DRAW_SCALE * width_scale)
@@ -294,11 +343,11 @@ class player:
 
         hit_flash = self.hit_flash_remaining > 0 and image in (
             self.Idle_Animation, self.Player_Run, self.Normal_Attack,
-            self.Normal_Attack_Up, self.Normal_Attack_Down,
+            self.Normal_Attack_Up, self.Normal_Attack_Down, self.quick_thrust_motion[self.dir],
         )
         if hit_flash:
             SDL_SetTextureColorMod(image.texture, 255, 80, 80)
-        if self.dir == self.LEFT:
+        if mirror_left and self.dir == self.LEFT:
             image.clip_composite_draw(
                 left, bottom, cell_width, cell_height, 0, 'h', self.x, draw_y, draw_width, draw_height)
         else:
