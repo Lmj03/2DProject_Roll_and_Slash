@@ -9,6 +9,7 @@ import ui
 from dice_ui import DiceRollUI
 from well_interaction import WellInteraction
 from campfire import Campfire
+from training_dummy import TrainingDummy
 from collision import can_walk_in_lobby
 from lobby_map import CANVAS_WIDTH, CANVAS_HEIGHT
 
@@ -25,7 +26,7 @@ class LobbySprite:
         self.image.draw(self.x, self.y)
 
 
-def create_lobby_world(player, dice_ui=None, well=None, campfire=None):
+def create_lobby_world(player, dice_ui=None, well=None, campfire=None, dummy=None):
     world = game_world.GameWorld()
     for name, left, top in lobby_map.BACKGROUND_SPRITES:
         world.add(LobbySprite(name, left, top), game_world.BACKGROUND)
@@ -37,6 +38,9 @@ def create_lobby_world(player, dice_ui=None, well=None, campfire=None):
     if campfire is None:
         campfire = Campfire()
     world.add(campfire, game_world.OBJECTS, foot_y=lambda: campfire.foot_y)
+    if dummy is None:
+        dummy = TrainingDummy()
+    world.add(dummy, game_world.OBJECTS, foot_y=lambda: dummy.foot_y)
     world.add(player, game_world.OBJECTS, foot_y=lambda: player.y - player.FOOT_OFFSET_Y)
 
     for name, left, top in lobby_map.FOREGROUND_SPRITES:
@@ -53,7 +57,10 @@ def create_lobby_world(player, dice_ui=None, well=None, campfire=None):
     return world
 
 
-def advance_simulation(player, dice_ui, delta_time, can_move=can_walk_in_lobby, campfire=None):
+def advance_simulation(player, dice_ui, delta_time, can_move=can_walk_in_lobby, campfire=None, dummy=None):
+    def can_step(x, foot_y):
+        return (can_move is None or can_move(x, foot_y)) and not dummy.blocks(x, foot_y)
+
     # Equipment can change while simulation time is paused in the well menu.
     dice_ui.update(0.0)
     remaining = delta_time
@@ -64,7 +71,9 @@ def advance_simulation(player, dice_ui, delta_time, can_move=can_walk_in_lobby, 
             if slot.roll_elapsed is not None:
                 step = min(step, max(1e-9, slot.ROLL_DURATION - slot.roll_elapsed))
         # Resolve a roll at its exact time, then simulate the remainder with its new effect.
-        player.update(step, can_move)
+        player.update(step, can_step if dummy is not None else can_move)
+        if dummy is not None:
+            dummy.update(step)
         dice_ui.update(step)
         if campfire is not None:
             campfire.update(step)
@@ -79,7 +88,8 @@ def main():
     dice_ui = DiceRollUI(player, right=CANVAS_WIDTH - 32, top=CANVAS_HEIGHT - 32)
     well = WellInteraction(player)
     campfire = Campfire()
-    world = create_lobby_world(player, dice_ui, well, campfire)
+    dummy = TrainingDummy()
+    world = create_lobby_world(player, dice_ui, well, campfire, dummy)
     previous_time = time.perf_counter()
 
     while key_handle_events.running:
@@ -94,7 +104,7 @@ def main():
 
         # Keep the event/render loop responsive and discard simulation time spent in the menu.
         simulation_delta = 0.0 if menu_was_open or well.menu.is_open else delta_time
-        advance_simulation(player, dice_ui, simulation_delta, campfire=campfire)
+        advance_simulation(player, dice_ui, simulation_delta, campfire=campfire, dummy=dummy)
         clear_canvas()
         world.draw()
         update_canvas()
