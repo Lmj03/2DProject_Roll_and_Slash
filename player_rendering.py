@@ -1,7 +1,7 @@
 from pico2d import load_font, load_image
 from sdl2 import SDL_SetTextureColorMod
 
-from player_movement import DOWN, LEFT, RIGHT, UP
+from player_movement import DOWN, FACING_AXES, LEFT, RIGHT, UP
 
 
 # Down attack poses are wider than the matching idle and run sprites.
@@ -11,6 +11,7 @@ DOWN_ATTACK_WIDTH_SCALE = 0.86
 class PlayerRenderer:
     DRAW_SCALE = 1.2
     DAMAGE_POPUP_RISE = 24
+    DASH_CHOP_TRAIL_ADVANCE = 20  # Display pixels.
     ANIMATION_ROWS = {UP: 0, RIGHT: 2, DOWN: 4, LEFT: 2}
     # Offsets in source pixels, using Pico2d's bottom-left coordinates.
     HORIZONTAL_SLASH_TRAIL_OFFSETS = {DOWN: (0, -18), LEFT: (-18, 0), RIGHT: (18, 0)}
@@ -122,6 +123,11 @@ class PlayerRenderer:
         offset = (0, 0)
         if player.state == 'HORIZONTAL_SLASH':
             offset = self.HORIZONTAL_SLASH_TRAIL_OFFSETS.get(player.dir, (0, 0))
+        elif player.state == 'DASH_CHOP' and 4 <= player.frame <= 6:
+            # Move the descending trail and impact, after the charging frames.
+            dx, dy = FACING_AXES[player.dir]
+            distance = self.DASH_CHOP_TRAIL_ADVANCE / self.DRAW_SCALE
+            offset = (dx * distance, dy * distance)
         # These skills have separate left-facing sheets.
         self._draw_frame(player, motion, 0, mirror_left=False)
         self._draw_frame(player, trail, 0, cell_width, cell_height, mirror_left=False,
