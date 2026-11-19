@@ -4,6 +4,7 @@ from pico2d import SDL_KEYDOWN, SDL_KEYUP, SDLK_1, SDLK_6, SDLK_a
 from transitions import Machine
 
 from buffs import BuffState
+from damage_popups import POPUP_DURATION, add_damage_popup, update_damage_popups
 import player_movement as movement
 from player_rendering import DOWN_ATTACK_WIDTH_SCALE, PlayerRenderer
 
@@ -27,7 +28,7 @@ class player:
     ALLOW_SKILLS_WITHOUT_STACKS = True
     ANIMATION_EPSILON = 1e-9  # Tolerance for floating-point frame boundaries.
     HIT_FLASH_TIME = 0.16
-    DAMAGE_POPUP_TIME = 0.65
+    DAMAGE_POPUP_TIME = POPUP_DURATION
     FOOT_OFFSET_Y = 36  # Distance below the center of an unscaled sprite.
 
     def __init__(self):
@@ -81,10 +82,7 @@ class player:
         damage = min(self.hp, amount)
         self.hp = max(0, self.hp - damage)
         self.hit_flash_remaining = self.HIT_FLASH_TIME
-        self.damage_popups.append({
-            'damage': damage, 'x': self.x, 'y': self.y + 55,
-            'remaining': self.DAMAGE_POPUP_TIME,
-        })
+        add_damage_popup(self.damage_popups, damage, self.x, self.y + 55, self.DAMAGE_POPUP_TIME)
         return damage
 
     @property
@@ -175,9 +173,7 @@ class player:
             return
 
         self.hit_flash_remaining = max(0.0, self.hit_flash_remaining - delta_time)
-        for popup in self.damage_popups:
-            popup['remaining'] -= delta_time
-        self.damage_popups = [popup for popup in self.damage_popups if popup['remaining'] > 1e-9]
+        update_damage_popups(self.damage_popups, delta_time)
 
         # Split at expiry so movement uses the buff only for its actual remaining time.
         if self.buffs.active is not None:

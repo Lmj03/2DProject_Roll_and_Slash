@@ -1,6 +1,7 @@
-from pico2d import load_image
+from pico2d import load_font, load_image
 
 from bounding_box import BoundingBox
+from damage_popups import add_damage_popup, draw_damage_popups, update_damage_popups
 from lobby_map import FOOT_RADIUS, TRAINING_DUMMY_POSITION
 
 
@@ -14,6 +15,8 @@ class TrainingDummy:
     def __init__(self):
         self.x, self.foot_y = TRAINING_DUMMY_POSITION
         self.sheet = load_image('asset/training_dummy_sheet.png')
+        self.damage_font = load_font('asset/fonts/SourceCodePro-Bold.ttf', 16)
+        self.damage_popups = []
         footprint = BoundingBox(self.x - 15, self.foot_y - 8,
                                self.x + 15, self.foot_y + 8)
         self.hurtbox = BoundingBox(self.x - 24, self.foot_y + 7,
@@ -32,8 +35,11 @@ class TrainingDummy:
         if attack is not None and attack.overlaps(self.hurtbox):
             self._last_attack_id = player.attack_id
             self._hit_time = 0.0
+            # Until skills get individual damage values, use the current attack power.
+            add_damage_popup(self.damage_popups, player.attack_power, self.x, self.hurtbox.top + 10)
 
     def update(self, delta_time):
+        update_damage_popups(self.damage_popups, delta_time)
         if self._hit_time is not None:
             self._hit_time += delta_time
             if self._hit_time >= self.HIT_FRAME_TIME * self.HIT_FRAME_COUNT:
@@ -43,3 +49,4 @@ class TrainingDummy:
         frame = 0 if self._hit_time is None else 1 + int(self._hit_time / self.HIT_FRAME_TIME)
         self.sheet.clip_draw(frame * self.CELL_SIZE, 0, self.CELL_SIZE, self.CELL_SIZE,
                              self.x, self.foot_y + self.FEET_TO_CENTER, self.DRAW_SIZE, self.DRAW_SIZE)
+        draw_damage_popups(self.damage_font, self.damage_popups)

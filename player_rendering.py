@@ -6,6 +6,7 @@ from pico2d import load_font, load_image
 from sdl2 import SDL_SetTextureColorMod
 
 from bounding_box import BoundingBox
+from damage_popups import draw_damage_popups
 from player_movement import DOWN, FACING_AXES, LEFT, RIGHT, UP
 
 
@@ -27,7 +28,6 @@ class SpriteFrame:
 
 class PlayerRenderer:
     DRAW_SCALE = 1.2
-    DAMAGE_POPUP_RISE = 24
     DASH_CHOP_TRAIL_ADVANCE = 20  # Display pixels.
     ANIMATION_ROWS = {UP: 0, RIGHT: 2, DOWN: 4, LEFT: 2}
     # Offsets in source pixels, using Pico2d's bottom-left coordinates.
@@ -108,16 +108,7 @@ class PlayerRenderer:
         trail = self._trail_frame(player)
         if trail is not None:
             self._draw_frame(player, trail, tint_on_hit=False)
-        self._draw_damage_popups(player)
-
-    def _draw_damage_popups(self, player):
-        for popup in player.damage_popups:
-            progress = 1.0 - popup['remaining'] / player.DAMAGE_POPUP_TIME
-            text = f"-{popup['damage']:g}"
-            x = popup['x'] - len(text) * 5
-            y = popup['y'] + self.DAMAGE_POPUP_RISE * progress
-            self.damage_font.draw(x + 1, y - 1, text, (35, 7, 5))
-            self.damage_font.draw(x, y, text, (255, 95, 64))
+        draw_damage_popups(self.damage_font, player.damage_popups, player.DAMAGE_POPUP_TIME)
 
     def _draw_shadow(self, player):
         x = player.x
