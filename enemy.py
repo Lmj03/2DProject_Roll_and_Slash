@@ -1,4 +1,4 @@
-from math import ceil
+from math import ceil, hypot
 
 from pico2d import draw_rectangle, load_font, load_image
 
@@ -6,6 +6,7 @@ from bounding_box import BoundingBox
 from damage_popups import add_damage_popup, draw_damage_popups, update_damage_popups
 from lobby_map import FOOT_RADIUS
 from player_attack_contact import PlayerAttackContact
+from player_movement import DOWN, LEFT, RIGHT, UP, move_position
 
 
 class Enemy:
@@ -18,9 +19,19 @@ class Enemy:
     HEALTH_BAR_WIDTH = 56
     HEALTH_BAR_HEIGHT = 8
     HEALTH_BAR_OFFSET_Y = 99
+    PATROL_SPEED = 70
+    WALK_FRAME_TIME = 0.10
+    WALK_FRAME_COUNT = 6
+    WAYPOINT_TOLERANCE = 8
 
-    def __init__(self, position):
+    def __init__(self, position, *, patrol=(), patrol_area=None):
         self.x, self.foot_y = position
+        self._patrol = tuple(patrol)
+        self._patrol_area = patrol_area
+        self._patrol_index = 0
+        self.facing = DOWN
+        self.walk_frame = 0
+        self._walk_time = 0.0
         self.hp = self.MAX_HP
         self._attack_time = None
         self._cooldown = 0.0
@@ -82,6 +93,51 @@ class Enemy:
         add_damage_popup(self.damage_popups, actual, self.x + offset, popup_y)
         if self.hp <= 0:
             self._attack_time = None
+
+    def _movement_check(self, player_x, player_foot_y, can_move):
+        clearance_x = self.FOOTPRINT_HALF_WIDTH + FOOT_RADIUS
+        clearance_y = self.FOOTPRINT_HALF_HEIGHT + FOOT_RADIUS
+
+        def can_step(x, foot_y):
+            clears_player = abs(x - player_x) > clearance_x or abs(foot_y - player_foot_y) > clearance_y
+            return clears_player and self._in_patrol_area(x, foot_y) and can_move(x, foot_y)
+
+        return can_step
+
+    def _in_patrol_area(self, x, foot_y):
+        return self._patrol_area is None or self._patrol_area.contains(x, foot_y)
+
+    def _patrol_step(self, delta_time, can_step):
+        for _ in self._patrol:
+            target_x, target_y = self._patrol[self._patrol_index]
+            dx, dy = target_x - self.x, target_y - self.foot_y
+            if max(abs(dx), abs(dy)) > self.WAYPOINT_TOLERANCE:
+                self.facing = self._facing_toward(dx, dy)
+                if self._walk_toward(dx, dy, hypot(dx, dy), self.PATROL_SPEED, delta_time, can_step):
+                    return
+            # Move on when a patrol point is reached or the next step is obstructed.
+            self._patrol_index = (self._patrol_index + 1) % len(self._patrol)
+        self.walk_frame = 0
+
+    def _walk_toward(self, dx, dy, distance, speed, delta_time, can_step):
+        dead_zone = self.WAYPOINT_TOLERANCE
+        axes = ((dx > dead_zone) - (dx < -dead_zone),
+                (dy > dead_zone) - (dy < -dead_zone))
+        previous = self.x, self.foot_y
+        self.x, self.foot_y = move_position(previous, axes, min(distance, speed * delta_time),
+                                            can_move=can_step, foot_offset_y=0, max_step=6)
+        if (self.x, self.foot_y) == previous:
+            self.walk_frame = 0
+            return False
+        self._walk_time += delta_time
+        self.walk_frame = int((self._walk_time + 1e-9) / self.WALK_FRAME_TIME) % self.WALK_FRAME_COUNT
+        return True
+
+    @staticmethod
+    def _facing_toward(dx, dy):
+        if abs(dx) >= abs(dy):
+            return RIGHT if dx >= 0 else LEFT
+        return UP if dy > 0 else DOWN
 
     def _draw_health_bar(self, x, foot_y):
         left = round(x) - self.HEALTH_BAR_WIDTH // 2

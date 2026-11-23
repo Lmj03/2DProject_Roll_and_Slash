@@ -10,11 +10,15 @@ RETURN_AREA = BoundingBox(25, 258, 110, 315)
 # The first point of each loop is the wraith's spawn at ground level.
 WEST_COURT = BoundingBox(342, 200, 1040, 736)
 EAST_COURT = BoundingBox(1240, 190, 2245, 841)
-STATUE_POSITION = (1920, 670)
+STATUE_PATROL = ((1920, 670), (1920, 725), (1835, 725), (1835, 620), (1920, 620))
 WRAITH_PATROLS = (
     (WEST_COURT, ((771, 510), (825, 510), (825, 650), (545, 650), (545, 510))),
+    (WEST_COURT, ((421, 458), (421, 583), (490, 583), (490, 458))),
+    (WEST_COURT, ((650, 335), (880, 335), (880, 412), (650, 412))),
     (EAST_COURT, ((1590, 532), (1770, 532), (1770, 735), (1450, 735), (1450, 532))),
     (EAST_COURT, ((1870, 383), (2025, 383), (2025, 565), (1820, 565), (1820, 383))),
+    (EAST_COURT, ((1360, 360), (1610, 360), (1610, 446), (1360, 446))),
+    (EAST_COURT, ((2090, 350), (2150, 350), (2150, 438), (2090, 438))),
 )
 # Layer image positions are measured from the top-left of the map.
 GATE_LINTEL = ('stage_01_gate_foreground.png', 950, 392)

@@ -113,7 +113,8 @@ def create_outer_fortress_scene(player, dice_ui):
     door = MapDoor(player, outer_fortress.RETURN_AREA, '[E] Return to Lobby', camera)
     wraiths = tuple(ArmoredWraith(route[0], patrol=route, patrol_area=area)
                     for area, route in outer_fortress.WRAITH_PATROLS)
-    statue = TalismanStatue(outer_fortress.STATUE_POSITION, outer_fortress.EAST_COURT)
+    route = outer_fortress.STATUE_PATROL
+    statue = TalismanStatue(route[0], patrol=route, patrol_area=outer_fortress.EAST_COURT)
     enemies = (*wraiths, statue)
     world.add(outer_fortress.Background(), game_world.BACKGROUND)
     world.add(LandingWarning(statue), game_world.BACKGROUND)

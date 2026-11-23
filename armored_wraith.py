@@ -5,15 +5,13 @@ from sdl2 import SDL_SetTextureColorMod
 
 from bounding_box import BoundingBox
 from enemy import Enemy
-from player_movement import DOWN, LEFT, RIGHT, UP, move_position
+from player_movement import DOWN, LEFT, RIGHT, UP
 
 
 class ArmoredWraith(Enemy):
     CELL_SIZE = 100
     DRAW_SCALE = 1.2
     FEET_TO_CENTER = 44
-    FRAME_COUNT = 6
-    WALK_FRAME_TIME = 0.10
     # Wind-up varies per frame. The fourth frame is the hit; the fifth is the fading trail.
     ATTACK_FRAME_ENDS = (0.10, 0.20, 0.35, 0.45, 0.55, 0.65)
     HIT_FRAME = 3
@@ -22,8 +20,6 @@ class ArmoredWraith(Enemy):
     MAX_HP = 200
     AGGRO_RADIUS = 190
     MOVE_SPEED = 100
-    PATROL_SPEED = 70
-    WAYPOINT_TOLERANCE = 8
 
     ROWS = {UP: 0, DOWN: 1, LEFT: 2, RIGHT: 3}
     # Fourth-frame alpha bounds in each trail cell, in Pico2d's bottom-left coordinates.
@@ -35,13 +31,7 @@ class ArmoredWraith(Enemy):
     }
 
     def __init__(self, position, *, patrol=(), patrol_area=None):
-        super().__init__(position)
-        self._patrol = tuple(patrol)
-        self._patrol_area = patrol_area
-        self._patrol_index = 0
-        self.facing = DOWN
-        self.walk_frame = 0
-        self._walk_time = 0.0
+        super().__init__(position, patrol=patrol, patrol_area=patrol_area)
         self._attack_hit = False
 
         self.walk_sheet = load_image('asset/m1.png')
@@ -70,9 +60,7 @@ class ArmoredWraith(Enemy):
         player_foot_y = player.y - player.FOOT_OFFSET_Y
         dx, dy = player.x - self.x, player_foot_y - self.foot_y
         distance = hypot(dx, dy)
-        def can_step(x, foot_y):
-            clears_player = abs(x - player.x) > 24 or abs(foot_y - player_foot_y) > 17
-            return clears_player and self._in_patrol_area(x, foot_y) and can_move(x, foot_y)
+        can_step = self._movement_check(player.x, player_foot_y, can_move)
 
         if body is None or distance > self.AGGRO_RADIUS or not self._in_patrol_area(player.x, player_foot_y):
             self._patrol_step(delta_time, can_step)
@@ -88,41 +76,6 @@ class ArmoredWraith(Enemy):
             return
 
         self._walk_toward(dx, dy, distance, self.MOVE_SPEED, delta_time, can_step)
-
-    def _in_patrol_area(self, x, foot_y):
-        return self._patrol_area is None or self._patrol_area.contains(x, foot_y)
-
-    def _patrol_step(self, delta_time, can_step):
-        for _ in self._patrol:
-            target_x, target_y = self._patrol[self._patrol_index]
-            dx, dy = target_x - self.x, target_y - self.foot_y
-            if max(abs(dx), abs(dy)) > self.WAYPOINT_TOLERANCE:
-                self.facing = self._facing_toward(dx, dy)
-                if self._walk_toward(dx, dy, hypot(dx, dy), self.PATROL_SPEED, delta_time, can_step):
-                    return
-            # Move on when a patrol point is reached or the next step is obstructed.
-            self._patrol_index = (self._patrol_index + 1) % len(self._patrol)
-        self.walk_frame = 0
-
-    def _walk_toward(self, dx, dy, distance, speed, delta_time, can_step):
-        dead_zone = self.WAYPOINT_TOLERANCE
-        axes = ((dx > dead_zone) - (dx < -dead_zone),
-                (dy > dead_zone) - (dy < -dead_zone))
-        previous = self.x, self.foot_y
-        self.x, self.foot_y = move_position(previous, axes, min(distance, speed * delta_time),
-                                            can_move=can_step, foot_offset_y=0, max_step=6)
-        if (self.x, self.foot_y) == previous:
-            self.walk_frame = 0
-            return False
-        self._walk_time += delta_time
-        self.walk_frame = int((self._walk_time + 1e-9) / self.WALK_FRAME_TIME) % self.FRAME_COUNT
-        return True
-
-    @staticmethod
-    def _facing_toward(dx, dy):
-        if abs(dx) >= abs(dy):
-            return RIGHT if dx >= 0 else LEFT
-        return UP if dy > 0 else DOWN
 
     def _advance_attack(self, player, body, delta_time):
         self._attack_time += delta_time
