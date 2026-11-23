@@ -1,5 +1,7 @@
 CANVAS_WIDTH, CANVAS_HEIGHT = 1500, 700
 PLAYER_START = (CANVAS_WIDTH // 2, 150)
+NORTH_DOOR_AREA = (694, 459, 806, 504)
+NORTH_DOOR_RETURN = (CANVAS_WIDTH // 2, 428)
 FOOT_RADIUS = 9
 # World coordinates, measured from the canvas bottom-left. Kept above the bottom HUD.
 CAMPFIRE_POSITION = (1250, 145)

@@ -270,5 +270,5 @@ class player:
             can_move=can_move, foot_offset_y=self.FOOT_OFFSET_Y, max_step=self.MAX_MOVE_STEP,
         )
 
-    def draw(self):
-        self.renderer.draw(self)
+    def draw(self, camera=None):
+        self.renderer.draw(self, camera)

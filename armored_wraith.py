@@ -184,9 +184,13 @@ class ArmoredWraith:
             return self._swing_bounds()
         return None
 
-    def draw(self):
+    def draw(self, camera=None):
         if self.hp > 0:
-            self.shadow.draw(self.x, self.foot_y, 49, 8)
+            x, y, foot_y = self.x, self._sprite_y, self.foot_y
+            if camera is not None:
+                x, y = camera.project(x, y)
+                _, foot_y = camera.project(self.x, foot_y)
+            self.shadow.draw(x, foot_y, 49, 8)
             attacking = self._attack_time is not None
             sheet = self.attack_sheet if attacking else self.walk_sheet
             frame = self._attack_frame() if attacking else self.walk_frame
@@ -195,11 +199,11 @@ class ArmoredWraith:
             if self.stun_remaining > 0:
                 SDL_SetTextureColorMod(sheet.texture, 140, 185, 255)
             sheet.clip_draw(frame * cell, self.ROWS[self.facing] * cell, cell, cell,
-                            self.x, self._sprite_y, draw_size, draw_size)
+                            x, y, draw_size, draw_size)
             if self.stun_remaining > 0:
                 SDL_SetTextureColorMod(sheet.texture, 255, 255, 255)
             if attacking and frame in (self.HIT_FRAME, self.HIT_FRAME + 1):
                 trail, row, width, height = self._trail_cell()
-                trail.clip_draw(frame * width, row * height, width, height, self.x, self._sprite_y,
+                trail.clip_draw(frame * width, row * height, width, height, x, y,
                                 round(width * self.DRAW_SCALE), round(height * self.DRAW_SCALE))
-        draw_damage_popups(self.damage_font, self.damage_popups)
+        draw_damage_popups(self.damage_font, self.damage_popups, camera=camera)

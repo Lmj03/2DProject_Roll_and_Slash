@@ -113,27 +113,29 @@ class PlayerRenderer:
     def _trail_cell_size(direction):
         return (100, 180) if direction in (UP, DOWN) else (180, 100)
 
-    def draw(self, player):
+    def draw(self, player, camera=None):
         if player.flash_path is not None:
-            self._draw_flash_trail(player)
-        self._draw_shadow(player)
-        self._draw_frame(player, self._body_frame(player), tint_on_hit=True)
+            self._draw_flash_trail(player, camera)
+        self._draw_shadow(player, camera)
+        self._draw_frame(player, self._body_frame(player), tint_on_hit=True, camera=camera)
         trail = self._trail_frame(player)
         if trail is not None:
-            self._draw_frame(player, trail, tint_on_hit=False)
-        draw_damage_popups(self.damage_font, player.damage_popups, player.DAMAGE_POPUP_TIME)
+            self._draw_frame(player, trail, tint_on_hit=False, camera=camera)
+        draw_damage_popups(self.damage_font, player.damage_popups, player.DAMAGE_POPUP_TIME, camera=camera)
 
-    def _draw_flash_trail(self, player):
+    def _draw_flash_trail(self, player, camera=None):
         path = player.flash_path
         if path.length <= 0:
             return
         width, height = self.FLASH_TRAIL_CELL
         x, y = path.center
+        if camera is not None:
+            x, y = camera.project(x, y)
         self.flash_trail.clip_composite_draw(player.frame * width, 0, width, height,
                                              path.angle, '', x, y, max(1, round(path.length)),
                                              self.FLASH_TRAIL_HEIGHT)
 
-    def _draw_shadow(self, player):
+    def _draw_shadow(self, player, camera=None):
         x = player.x
         y = player.y - player.FOOT_OFFSET_Y
         if player.state == 'ATTACK':
@@ -145,6 +147,8 @@ class PlayerRenderer:
                 offset_x *= DOWN_ATTACK_WIDTH_SCALE
             x += offset_x * self.DRAW_SCALE
             y += (player.FOOT_OFFSET_Y - depth) * self.DRAW_SCALE
+        if camera is not None:
+            x, y = camera.project(x, y)
         self.shadow.draw(x, y, 54, 8)
 
     def _body_frame(self, player):
@@ -232,11 +236,13 @@ class PlayerRenderer:
         trail = self._trail_frame(player)
         return self._world_bounds(player, trail) if trail is not None else None
 
-    def _draw_frame(self, player, sprite, *, tint_on_hit):
+    def _draw_frame(self, player, sprite, *, tint_on_hit, camera=None):
         column = player.frame if sprite.column is None else sprite.column
         left = column * sprite.width
         bottom = sprite.row * sprite.height
         x, y, w, h, mirror = self._placement(player, sprite)
+        if camera is not None:
+            x, y = camera.project(x, y)
         hit_flash = tint_on_hit and player.hit_flash_remaining > 0
         if hit_flash:
             SDL_SetTextureColorMod(sprite.image.texture, 255, 80, 80)
