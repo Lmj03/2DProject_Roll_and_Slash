@@ -25,11 +25,15 @@ class SpriteFrame:
     width_scale: float = 1.0
     mirror_left: bool = True
     offset: tuple = (0, 0)
+    column: int | None = None
 
 
 class PlayerRenderer:
     DRAW_SCALE = 1.2
     DASH_CHOP_TRAIL_ADVANCE = 20  # Display pixels.
+    FLASH_TRAIL_CELL = (320, 64)
+    FLASH_TRAIL_HEIGHT = 80  # Display pixels.
+    FLASH_BODY_COLUMNS = (2, 3, 4, 0)
     ANIMATION_ROWS = {UP: 0, RIGHT: 2, DOWN: 4, LEFT: 2}
     # Offsets in source pixels, using Pico2d's bottom-left coordinates.
     HORIZONTAL_SLASH_TRAIL_OFFSETS = {DOWN: (0, -18), LEFT: (-18, 0), RIGHT: (18, 0)}
@@ -64,6 +68,7 @@ class PlayerRenderer:
     def __init__(self):
         self.damage_font = load_font('asset/fonts/SourceCodePro-Bold.ttf', 16)
         self.shadow = load_image('asset/player_shadow.png')
+        self.flash_trail = load_image('asset/skills/flash_strike/flash_lightning_sheet.png')
         with (ASSET_DIR / 'player_body_bounds.json').open(encoding='utf-8') as bounds_file:
             self._bounds_by_path = load(bounds_file)
         with (ASSET_DIR / 'player_attack_bounds.json').open(encoding='utf-8') as bounds_file:
@@ -107,12 +112,24 @@ class PlayerRenderer:
         return (100, 180) if direction in (UP, DOWN) else (180, 100)
 
     def draw(self, player):
+        if player.flash_path is not None:
+            self._draw_flash_trail(player)
         self._draw_shadow(player)
         self._draw_frame(player, self._body_frame(player), tint_on_hit=True)
         trail = self._trail_frame(player)
         if trail is not None:
             self._draw_frame(player, trail, tint_on_hit=False)
         draw_damage_popups(self.damage_font, player.damage_popups, player.DAMAGE_POPUP_TIME)
+
+    def _draw_flash_trail(self, player):
+        path = player.flash_path
+        if path.length <= 0:
+            return
+        width, height = self.FLASH_TRAIL_CELL
+        x, y = path.center
+        self.flash_trail.clip_composite_draw(player.frame * width, 0, width, height,
+                                             path.angle, '', x, y, max(1, round(path.length)),
+                                             self.FLASH_TRAIL_HEIGHT)
 
     def _draw_shadow(self, player):
         x = player.x
@@ -131,6 +148,9 @@ class PlayerRenderer:
     def _body_frame(self, player):
         if player.state == 'SWORD_SPIN':
             return SpriteFrame(self.spin_sheet, width=180, height=180, mirror_left=False)
+        if player.state == 'FLASH_STRIKE':
+            motion, _ = self.sword_skill_sheets['QUICK_THRUST'][player.dir]
+            return SpriteFrame(motion, mirror_left=False, column=self.FLASH_BODY_COLUMNS[player.frame])
         if player.state == 'ATTACK':
             direction = RIGHT if player.dir == LEFT else player.dir
             motion, _ = self.attack_sheets[direction]
@@ -173,7 +193,8 @@ class PlayerRenderer:
 
     def _world_bounds(self, player, sprite, local=None):
         if local is None:
-            local = self._bounds_by_image[sprite.image][sprite.row][player.frame]
+            column = player.frame if sprite.column is None else sprite.column
+            local = self._bounds_by_image[sprite.image][sprite.row][column]
         if local is None:
             return None
         left, bottom, right, top = local
@@ -189,6 +210,8 @@ class PlayerRenderer:
         return self._world_bounds(player, self._body_frame(player))
 
     def attack_box(self, player):
+        if player.state == 'FLASH_STRIKE':
+            return player.flash_path.attack_box() if player.flash_path is not None else None
         if player.state == 'SWORD_SPIN':
             return self._world_bounds(player, self._body_frame(player), self._spin_attack_bounds)
         # Dash streaks show movement. The final downward strike is the damaging frame.
@@ -198,7 +221,8 @@ class PlayerRenderer:
         return self._world_bounds(player, trail) if trail is not None else None
 
     def _draw_frame(self, player, sprite, *, tint_on_hit):
-        left = player.frame * sprite.width
+        column = player.frame if sprite.column is None else sprite.column
+        left = column * sprite.width
         bottom = sprite.row * sprite.height
         x, y, w, h, mirror = self._placement(player, sprite)
         hit_flash = tint_on_hit and player.hit_flash_remaining > 0

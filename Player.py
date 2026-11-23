@@ -6,6 +6,7 @@ from transitions import Machine
 from buffs import BuffState
 from damage_popups import POPUP_DURATION, add_damage_popup, update_damage_popups
 import player_movement as movement
+from flash_strike import FlashPath, find_flash_landing
 from player_rendering import DOWN_ATTACK_WIDTH_SCALE, PlayerRenderer
 
 
@@ -21,12 +22,16 @@ class player:
         'HORIZONTAL_SLASH': (0.065, 6),
         'DASH_CHOP': (0.06, 8),
         'SWORD_SPIN': (0.05, 8),
+        'FLASH_STRIKE': (0.06, 4),
     }
     ATTACK_STATES = ('ATTACK', *SWORD_SKILL_TIMINGS)
     DASH_CHOP_DISTANCE = 96.0  # World pixels on open ground.
     SPIN_DURATION = 2.0
     SPIN_HIT_INTERVAL = 0.25
     SPIN_DAMAGE_MULTIPLIER = 0.25
+    FLASH_STRIKE_DISTANCE = 350.0
+    FLASH_STRIKE_HALF_WIDTH = 22.0
+    FLASH_STRIKE_DAMAGE_MULTIPLIER = 3.0
     DASH_CHOP_MOVE_FRAMES = (2, 4)  # Start moving on frame 2 and plant the feet on frame 4.
     # Temporary animation preview mode. Keep enabled until removal is requested.
     ALLOW_SKILLS_WITHOUT_STACKS = True
@@ -57,6 +62,7 @@ class player:
         self._attack_key_down = False
         self.attack_combo = 0
         self.attack_id = 0
+        self.flash_path = None
         self.renderer = PlayerRenderer()
         self.dir = self.UP
         self.pressed_keys = set()
@@ -73,6 +79,7 @@ class player:
                 {'trigger': 'start_horizontal_slash', 'source': ['IDLE', 'RUN'], 'dest': 'HORIZONTAL_SLASH'},
                 {'trigger': 'start_dash_chop', 'source': ['IDLE', 'RUN'], 'dest': 'DASH_CHOP'},
                 {'trigger': 'start_sword_spin', 'source': ['IDLE', 'RUN'], 'dest': 'SWORD_SPIN'},
+                {'trigger': 'start_flash_strike', 'source': ['IDLE', 'RUN'], 'dest': 'FLASH_STRIKE'},
                 {'trigger': 'stop_attack', 'source': list(self.ATTACK_STATES), 'dest': 'IDLE'},
             ],
             initial='IDLE',
@@ -111,6 +118,7 @@ class player:
         self._animation_time = 0.0
         if self.state in self.ATTACK_STATES:
             self.attack_id += 1
+        self.flash_path = None
 
     def reset_inputs(self):
         self.pressed_keys.clear()
@@ -137,6 +145,7 @@ class player:
                 1: self.start_horizontal_slash,
                 2: self.start_dash_chop,
                 4: self.start_sword_spin,
+                5: self.start_flash_strike,
             }
             if index in skill_starters:
                 self._try_sword_skill(index, skill_starters[index])
@@ -228,6 +237,13 @@ class player:
 
         self._animation_time %= frame_time * frame_count
         self.frame = int((self._animation_time + self.ANIMATION_EPSILON) / frame_time) % frame_count
+
+    def resolve_flash_strike(self, can_travel, can_land):
+        start = (self.x, self.y)
+        end = find_flash_landing(start, movement.FACING_AXES[self.dir], self.FLASH_STRIKE_DISTANCE,
+                                 can_travel=can_travel, can_land=can_land, foot_offset_y=self.FOOT_OFFSET_Y)
+        self.x, self.y = end
+        self.flash_path = FlashPath(start, end, self.FLASH_STRIKE_HALF_WIDTH)
 
     def _advance_dash_chop(self, delta_time, frame_time, can_move):
         start_frame, plant_frame = self.DASH_CHOP_MOVE_FRAMES

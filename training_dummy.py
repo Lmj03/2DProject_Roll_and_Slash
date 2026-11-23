@@ -51,6 +51,8 @@ class TrainingDummy:
             # Stagger consecutive numbers so they remain readable while rising.
             popup_x += (-24, 24, 0)[self._spin_popup_index % 3]
             self._spin_popup_index += 1
+        if player.state == 'FLASH_STRIKE':
+            damage *= player.FLASH_STRIKE_DAMAGE_MULTIPLIER
         self._last_attack_id = player.attack_id
         add_damage_popup(self.damage_popups, damage, popup_x, self.hurtbox.top + 10)
 
