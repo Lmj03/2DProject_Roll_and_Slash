@@ -13,6 +13,7 @@ from player_movement import DOWN, FACING_AXES, LEFT, RIGHT, UP
 # Down attack poses are wider than the matching idle and run sprites.
 DOWN_ATTACK_WIDTH_SCALE = 0.86
 ASSET_DIR = Path(__file__).resolve().parent / 'asset'
+SPIN_SHEET_PATH = 'asset/skills/sword_spin/sword_spin_sheet.png'
 
 
 @dataclass(frozen=True)
@@ -66,8 +67,11 @@ class PlayerRenderer:
         with (ASSET_DIR / 'player_body_bounds.json').open(encoding='utf-8') as bounds_file:
             self._bounds_by_path = load(bounds_file)
         with (ASSET_DIR / 'player_attack_bounds.json').open(encoding='utf-8') as bounds_file:
-            self._bounds_by_path.update(load(bounds_file))
+            attack_bounds = load(bounds_file)
+        self._spin_attack_bounds = attack_bounds.pop(SPIN_SHEET_PATH)[0][0]
+        self._bounds_by_path.update(attack_bounds)
         self._bounds_by_image = {}
+        self.spin_sheet = self._load_sprite(SPIN_SHEET_PATH)
         self.idle = self._load_sprite('asset/Player_Idle.png')
         self.run = self._load_sprite('asset/Run.png')
         self.attack_sheets = {
@@ -125,6 +129,8 @@ class PlayerRenderer:
         self.shadow.draw(x, y, 54, 8)
 
     def _body_frame(self, player):
+        if player.state == 'SWORD_SPIN':
+            return SpriteFrame(self.spin_sheet, width=180, height=180, mirror_left=False)
         if player.state == 'ATTACK':
             direction = RIGHT if player.dir == LEFT else player.dir
             motion, _ = self.attack_sheets[direction]
@@ -165,8 +171,9 @@ class PlayerRenderer:
         mirror = sprite.mirror_left and player.dir == LEFT
         return x, y, w, h, mirror
 
-    def _world_bounds(self, player, sprite):
-        local = self._bounds_by_image[sprite.image][sprite.row][player.frame]
+    def _world_bounds(self, player, sprite, local=None):
+        if local is None:
+            local = self._bounds_by_image[sprite.image][sprite.row][player.frame]
         if local is None:
             return None
         left, bottom, right, top = local
@@ -182,6 +189,8 @@ class PlayerRenderer:
         return self._world_bounds(player, self._body_frame(player))
 
     def attack_box(self, player):
+        if player.state == 'SWORD_SPIN':
+            return self._world_bounds(player, self._body_frame(player), self._spin_attack_bounds)
         # Dash streaks show movement. The final downward strike is the damaging frame.
         if player.state == 'DASH_CHOP' and player.frame != 5:
             return None

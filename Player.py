@@ -20,9 +20,13 @@ class player:
         'QUICK_THRUST': (0.05, 6),        # Frame time in seconds, frame count.
         'HORIZONTAL_SLASH': (0.065, 6),
         'DASH_CHOP': (0.06, 8),
+        'SWORD_SPIN': (0.05, 8),
     }
     ATTACK_STATES = ('ATTACK', *SWORD_SKILL_TIMINGS)
     DASH_CHOP_DISTANCE = 96.0  # World pixels on open ground.
+    SPIN_DURATION = 2.0
+    SPIN_HIT_INTERVAL = 0.25
+    SPIN_DAMAGE_MULTIPLIER = 0.25
     DASH_CHOP_MOVE_FRAMES = (2, 4)  # Start moving on frame 2 and plant the feet on frame 4.
     # Temporary animation preview mode. Keep enabled until removal is requested.
     ALLOW_SKILLS_WITHOUT_STACKS = True
@@ -68,6 +72,7 @@ class player:
                 {'trigger': 'start_quick_thrust', 'source': ['IDLE', 'RUN'], 'dest': 'QUICK_THRUST'},
                 {'trigger': 'start_horizontal_slash', 'source': ['IDLE', 'RUN'], 'dest': 'HORIZONTAL_SLASH'},
                 {'trigger': 'start_dash_chop', 'source': ['IDLE', 'RUN'], 'dest': 'DASH_CHOP'},
+                {'trigger': 'start_sword_spin', 'source': ['IDLE', 'RUN'], 'dest': 'SWORD_SPIN'},
                 {'trigger': 'stop_attack', 'source': list(self.ATTACK_STATES), 'dest': 'IDLE'},
             ],
             initial='IDLE',
@@ -127,8 +132,13 @@ class player:
 
         if event.type == SDL_KEYDOWN and SDLK_1 <= event.key <= SDLK_6:
             index = event.key - SDLK_1
-            skill_starters = (self.start_quick_thrust, self.start_horizontal_slash, self.start_dash_chop)
-            if index < len(skill_starters):
+            skill_starters = {
+                0: self.start_quick_thrust,
+                1: self.start_horizontal_slash,
+                2: self.start_dash_chop,
+                4: self.start_sword_spin,
+            }
+            if index in skill_starters:
                 self._try_sword_skill(index, skill_starters[index])
             elif self.sword_stacks[index] > 0:
                 self.sword_stacks[index] -= 1
@@ -142,7 +152,7 @@ class player:
         else:
             self.pressed_keys.discard(event.key)
 
-        if self.state in self.ATTACK_STATES:
+        if self.state in self.ATTACK_STATES and self.state != 'SWORD_SPIN':
             return
         self._sync_movement()
 
@@ -192,8 +202,14 @@ class player:
             if self.state == 'DASH_CHOP':
                 self._advance_dash_chop(delta_time, frame_time, can_move)
             duration = frame_time * frame_count
+            if self.state == 'SWORD_SPIN':
+                duration = self.SPIN_DURATION
+                if self.move_x or self.move_y:
+                    # Apply only the movement up to the end of the spin on a crossing update.
+                    active = min(delta_time, max(0.0, duration - (self._animation_time - delta_time)))
+                    self._move_along((self.move_x, self.move_y), self.move_speed * active, can_move)
             if self._animation_time < duration - self.ANIMATION_EPSILON:
-                self.frame = int((self._animation_time + self.ANIMATION_EPSILON) / frame_time)
+                self.frame = int((self._animation_time + self.ANIMATION_EPSILON) / frame_time) % frame_count
                 return
 
             # Use the rest of this frame after the attack for idle or resumed movement.

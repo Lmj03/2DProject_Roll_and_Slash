@@ -24,22 +24,39 @@ class TrainingDummy:
         self.movement_box = footprint.expanded(FOOT_RADIUS)
         self._hit_time = None
         self._last_attack_id = None
+        self._spin_hit_remaining = 0.0
+        self._spin_popup_index = 0
 
     def blocks(self, x, foot_y):
         return self.movement_box.contains(x, foot_y)
 
     def check_attack(self, player):
-        if player.attack_id == self._last_attack_id:
+        spinning = player.state == 'SWORD_SPIN'
+        if player.attack_id == self._last_attack_id and (not spinning or self._spin_hit_remaining > 1e-9):
             return
         attack = player.renderer.attack_box(player)
-        if attack is not None and attack.overlaps(self.hurtbox):
-            self._last_attack_id = player.attack_id
-            self._hit_time = 0.0
-            # Until skills get individual damage values, use the current attack power.
-            add_damage_popup(self.damage_popups, player.attack_power, self.x, self.hurtbox.top + 10)
+        if attack is None:
+            return
+        overlaps = attack.ellipse_overlaps if spinning else attack.overlaps
+        if not overlaps(self.hurtbox):
+            return
+        self._hit_time = 0.0
+        damage = player.attack_power
+        popup_x = self.x
+        if spinning:
+            if self._last_attack_id != player.attack_id:
+                self._spin_popup_index = 0
+            self._spin_hit_remaining = player.SPIN_HIT_INTERVAL
+            damage *= player.SPIN_DAMAGE_MULTIPLIER
+            # Stagger consecutive numbers so they remain readable while rising.
+            popup_x += (-24, 24, 0)[self._spin_popup_index % 3]
+            self._spin_popup_index += 1
+        self._last_attack_id = player.attack_id
+        add_damage_popup(self.damage_popups, damage, popup_x, self.hurtbox.top + 10)
 
     def update(self, delta_time):
         update_damage_popups(self.damage_popups, delta_time)
+        self._spin_hit_remaining = max(0.0, self._spin_hit_remaining - delta_time)
         if self._hit_time is not None:
             self._hit_time += delta_time
             if self._hit_time >= self.HIT_FRAME_TIME * self.HIT_FRAME_COUNT:

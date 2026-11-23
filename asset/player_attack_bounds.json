@@ -49,5 +49,6 @@
   ],
   "asset/skills/dash_chop/dash_chop_right_fx_180x100.png": [
     [null, null, [18, 20, 69, 30], [4, 19, 70, 34], [44, 20, 141, 84], [101, 14, 158, 84], [130, 15, 157, 33], null]
-  ]
+  ],
+  "asset/skills/sword_spin/sword_spin_sheet.png": [[[9, 70, 171, 120]]]
 }

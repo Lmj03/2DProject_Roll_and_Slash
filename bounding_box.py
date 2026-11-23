@@ -15,6 +15,16 @@ class BoundingBox:
         return (self.left < other.right and other.left < self.right
                 and self.bottom < other.top and other.bottom < self.top)
 
+    def ellipse_overlaps(self, other):
+        """Treat this box as the outer bounds of an ellipse for a second overlap check."""
+        if not self.overlaps(other):
+            return False
+        rx, ry = (self.right - self.left) / 2, (self.top - self.bottom) / 2
+        cx, cy = self.left + rx, self.bottom + ry
+        x = min(max(cx, other.left), other.right)
+        y = min(max(cy, other.bottom), other.top)
+        return ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 < 1
+
     def contains(self, x, y):
         return self.left <= x <= self.right and self.bottom <= y <= self.top
 
