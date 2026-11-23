@@ -7,7 +7,15 @@ from collision import _polygon_location
 SIZE = 2400, 1100
 ENTRY = 172, 300  # World coordinates at the player's feet.
 RETURN_AREA = BoundingBox(25, 258, 110, 315)
-ENEMY_STARTS = ((771, 510), (1590, 532), (1870, 383))
+# The first point of each loop is the wraith's spawn at ground level.
+WEST_COURT = BoundingBox(342, 200, 1040, 736)
+EAST_COURT = BoundingBox(1240, 190, 2245, 841)
+STATUE_POSITION = (1920, 670)
+WRAITH_PATROLS = (
+    (WEST_COURT, ((771, 510), (825, 510), (825, 650), (545, 650), (545, 510))),
+    (EAST_COURT, ((1590, 532), (1770, 532), (1770, 735), (1450, 735), (1450, 532))),
+    (EAST_COURT, ((1870, 383), (2025, 383), (2025, 565), (1820, 565), (1820, 383))),
+)
 # Layer image positions are measured from the top-left of the map.
 GATE_LINTEL = ('stage_01_gate_foreground.png', 950, 392)
 GATE_PIERS = (

@@ -16,6 +16,7 @@ from bounding_box import BoundingBox
 from camera import Camera
 from map_door import MapDoor
 from armored_wraith import ArmoredWraith
+from talisman_statue import LandingWarning, TalismanStatue
 from training_dummy import TrainingDummy
 from collision_debug import CollisionDebug
 from collision import can_walk_in_lobby
@@ -23,7 +24,7 @@ from lobby_map import CANVAS_WIDTH, CANVAS_HEIGHT
 
 TARGET_FPS = 60
 COMBAT_STEP = 1.0 / 60.0
-SHOW_COLLISION_BOXES = True
+SHOW_COLLISION_BOXES = False
 
 
 class LobbySprite:
@@ -82,7 +83,7 @@ class Scene:
     door: MapDoor
     arrival: tuple
     facing: int
-    enemies: tuple
+    enemies: tuple = ()
     can_move: Callable[[float, float], bool] = can_walk_in_lobby
     camera: Camera | None = None
     well: WellInteraction | None = None
@@ -110,8 +111,12 @@ def create_outer_fortress_scene(player, dice_ui):
     world = game_world.GameWorld()
     camera = Camera((CANVAS_WIDTH, CANVAS_HEIGHT), outer_fortress.SIZE)
     door = MapDoor(player, outer_fortress.RETURN_AREA, '[E] Return to Lobby', camera)
-    enemies = tuple(ArmoredWraith(position) for position in outer_fortress.ENEMY_STARTS)
+    wraiths = tuple(ArmoredWraith(route[0], patrol=route, patrol_area=area)
+                    for area, route in outer_fortress.WRAITH_PATROLS)
+    statue = TalismanStatue(outer_fortress.STATUE_POSITION, outer_fortress.EAST_COURT)
+    enemies = (*wraiths, statue)
     world.add(outer_fortress.Background(), game_world.BACKGROUND)
+    world.add(LandingWarning(statue), game_world.BACKGROUND)
     for enemy in enemies:
         world.add(enemy, game_world.OBJECTS, foot_y=lambda enemy=enemy: enemy.foot_y)
     world.add(player, game_world.OBJECTS, foot_y=lambda: player.y - player.FOOT_OFFSET_Y)
@@ -176,11 +181,10 @@ def main():
     well = WellInteraction(player)
     campfire = Campfire()
     dummy = TrainingDummy()
-    enemies = (ArmoredWraith(lobby_map.M1_TEST_POSITION),)
-    world = create_lobby_world(player, dice_ui, well, campfire, dummy, enemies=enemies)
+    world = create_lobby_world(player, dice_ui, well, campfire, dummy)
     door = MapDoor(player, BoundingBox(*lobby_map.NORTH_DOOR_AREA), '[E] Enter Outer Fortress')
     world.add(door, game_world.UI)
-    lobby = Scene(world, door, lobby_map.NORTH_DOOR_RETURN, player.DOWN, enemies,
+    lobby = Scene(world, door, lobby_map.NORTH_DOOR_RETURN, player.DOWN,
                   well=well, campfire=campfire, dummy=dummy)
     fortress = create_outer_fortress_scene(player, dice_ui)
     scene = lobby
