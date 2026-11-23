@@ -115,7 +115,11 @@ def create_outer_fortress_scene(player, dice_ui):
     for enemy in enemies:
         world.add(enemy, game_world.OBJECTS, foot_y=lambda enemy=enemy: enemy.foot_y)
     world.add(player, game_world.OBJECTS, foot_y=lambda: player.y - player.FOOT_OFFSET_Y)
-    world.add(outer_fortress.GateForeground(), game_world.FOREGROUND)
+    for name, left, top, foot_y in outer_fortress.GATE_PIERS:
+        world.add(outer_fortress.GateWallSprite(name, left, top), game_world.OBJECTS,
+                  foot_y=lambda y=foot_y: y)
+    lintel = outer_fortress.GateWallSprite(*outer_fortress.GATE_LINTEL)
+    world.add(lintel, game_world.FOREGROUND)
     add_hud(world, player, dice_ui)
     world.add(door, game_world.UI)
     return Scene(world, door, outer_fortress.ENTRY, player.RIGHT, enemies,
