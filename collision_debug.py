@@ -28,15 +28,18 @@ def _lobby_collision_boxes():
 
 
 class CollisionDebug:
-    def __init__(self, player, dummy):
+    def __init__(self, player, dummy, enemies=()):
         self.player = player
         self.dummy = dummy
+        self.enemies = tuple(enemies)
         self.lobby_boxes = _lobby_collision_boxes()
 
     def draw(self):
         renderer = self.player.renderer
         boxes = [*self.lobby_boxes, self.dummy.movement_box, self.dummy.hurtbox,
                  renderer.body_box(self.player), renderer.attack_box(self.player)]
+        for enemy in self.enemies:
+            boxes.extend((enemy.movement_box, enemy.hurtbox, enemy.attack_box()))
         for box in boxes:
             if box is not None:
                 draw_rectangle(box.left, box.bottom, box.right, box.top, 255, 0, 0)

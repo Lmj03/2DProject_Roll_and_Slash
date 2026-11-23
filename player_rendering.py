@@ -34,6 +34,7 @@ class PlayerRenderer:
     FLASH_TRAIL_CELL = (320, 64)
     FLASH_TRAIL_HEIGHT = 80  # Display pixels.
     FLASH_BODY_COLUMNS = (2, 3, 4, 0)
+    PARRY_COLUMNS = {'PARRY': (0, 1, 2, 2, 0), 'PARRY_COUNTER': (3, 4, 5, 6, 7)}
     ANIMATION_ROWS = {UP: 0, RIGHT: 2, DOWN: 4, LEFT: 2}
     # Offsets in source pixels, using Pico2d's bottom-left coordinates.
     HORIZONTAL_SLASH_TRAIL_OFFSETS = {DOWN: (0, -18), LEFT: (-18, 0), RIGHT: (18, 0)}
@@ -89,6 +90,7 @@ class PlayerRenderer:
             'HORIZONTAL_SLASH': self._load_sword_skill_sheets('horizontal_slash'),
             'DASH_CHOP': self._load_sword_skill_sheets('dash_chop'),
         }
+        self.parry_sheets = self._load_sword_skill_sheets('parry')
 
     def _load_sprite(self, path):
         image = load_image(path)
@@ -156,6 +158,9 @@ class PlayerRenderer:
             motion, _ = self.attack_sheets[direction]
             scale = DOWN_ATTACK_WIDTH_SCALE if direction == DOWN else 1
             return SpriteFrame(motion, row=player.attack_combo, width_scale=scale)
+        if player.state in self.PARRY_COLUMNS:
+            motion, _ = self.parry_sheets[player.dir]
+            return SpriteFrame(motion, mirror_left=False, column=self.PARRY_COLUMNS[player.state][player.frame])
         if player.state in self.sword_skill_sheets:
             motion, _ = self.sword_skill_sheets[player.state][player.dir]
             return SpriteFrame(motion, mirror_left=False)
@@ -170,6 +175,10 @@ class PlayerRenderer:
             scale = DOWN_ATTACK_WIDTH_SCALE if direction == DOWN else 1
             return SpriteFrame(trail, row=player.attack_combo, width=width, height=height,
                                width_scale=scale)
+        if player.state in self.PARRY_COLUMNS:
+            _, trail = self.parry_sheets[player.dir]
+            column = self.PARRY_COLUMNS[player.state][player.frame]
+            return SpriteFrame(trail, width=width, height=height, mirror_left=False, column=column)
         if player.state not in self.sword_skill_sheets:
             return None
         _, trail = self.sword_skill_sheets[player.state][player.dir]
@@ -210,6 +219,9 @@ class PlayerRenderer:
         return self._world_bounds(player, self._body_frame(player))
 
     def attack_box(self, player):
+        # The counter is applied to the intercepted attacker at contact time.
+        if player.state in self.PARRY_COLUMNS:
+            return None
         if player.state == 'FLASH_STRIKE':
             return player.flash_path.attack_box() if player.flash_path is not None else None
         if player.state == 'SWORD_SPIN':

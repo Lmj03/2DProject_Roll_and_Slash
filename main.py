@@ -9,6 +9,7 @@ import ui
 from dice_ui import DiceRollUI
 from well_interaction import WellInteraction
 from campfire import Campfire
+from armored_wraith import ArmoredWraith
 from training_dummy import TrainingDummy
 from collision_debug import CollisionDebug
 from collision import can_walk_in_lobby
@@ -29,7 +30,7 @@ class LobbySprite:
         self.image.draw(self.x, self.y)
 
 
-def create_lobby_world(player, dice_ui=None, well=None, campfire=None, dummy=None):
+def create_lobby_world(player, dice_ui=None, well=None, campfire=None, dummy=None, *, enemies=()):
     world = game_world.GameWorld()
     for name, left, top in lobby_map.BACKGROUND_SPRITES:
         world.add(LobbySprite(name, left, top), game_world.BACKGROUND)
@@ -44,12 +45,15 @@ def create_lobby_world(player, dice_ui=None, well=None, campfire=None, dummy=Non
     if dummy is None:
         dummy = TrainingDummy()
     world.add(dummy, game_world.OBJECTS, foot_y=lambda: dummy.foot_y)
+    enemies = tuple(enemies)
+    for enemy in enemies:
+        world.add(enemy, game_world.OBJECTS, foot_y=lambda enemy=enemy: enemy.foot_y)
     world.add(player, game_world.OBJECTS, foot_y=lambda: player.y - player.FOOT_OFFSET_Y)
 
     for name, left, top in lobby_map.FOREGROUND_SPRITES:
         world.add(LobbySprite(name, left, top), game_world.FOREGROUND)
     if SHOW_COLLISION_BOXES:
-        world.add(CollisionDebug(player, dummy), game_world.DEBUG)
+        world.add(CollisionDebug(player, dummy, enemies), game_world.DEBUG)
     world.add(ui.HealthBar(player), game_world.UI)
     world.add(ui.SwordStackBar(player, right=CANVAS_WIDTH - 32), game_world.UI)
     if dice_ui is None:
@@ -62,12 +66,16 @@ def create_lobby_world(player, dice_ui=None, well=None, campfire=None, dummy=Non
     return world
 
 
-def advance_simulation(player, dice_ui, delta_time, can_move=can_walk_in_lobby, campfire=None, dummy=None, *, targets=()):
-    combat_targets = tuple(targets) if dummy is None else (dummy, *targets)
+def advance_simulation(player, dice_ui, delta_time, can_move=can_walk_in_lobby, campfire=None, dummy=None,
+                       *, targets=(), enemies=()):
+    enemies = tuple(enemies)
+    combat_targets = (*targets, *enemies)
+    if dummy is not None:
+        combat_targets = (dummy, *combat_targets)
 
-    def can_step(x, foot_y):
+    def can_step(x, foot_y, *, ignore=None):
         return (can_move is None or can_move(x, foot_y)) and not any(
-            target.blocks(x, foot_y) for target in combat_targets)
+            target is not ignore and target.blocks(x, foot_y) for target in combat_targets)
 
     # Equipment can change while simulation time is paused in the well menu.
     dice_ui.update(0.0)
@@ -91,6 +99,8 @@ def advance_simulation(player, dice_ui, delta_time, can_move=can_walk_in_lobby, 
             target.update(step)
             if player.state != 'FLASH_STRIKE':
                 target.check_attack(player)
+        for enemy in enemies:
+            enemy.act(player, step, lambda x, y, enemy=enemy: can_step(x, y, ignore=enemy))
         dice_ui.update(step)
         if campfire is not None:
             campfire.update(step)
@@ -106,7 +116,8 @@ def main():
     well = WellInteraction(player)
     campfire = Campfire()
     dummy = TrainingDummy()
-    world = create_lobby_world(player, dice_ui, well, campfire, dummy)
+    enemies = (ArmoredWraith(lobby_map.M1_TEST_POSITION),)
+    world = create_lobby_world(player, dice_ui, well, campfire, dummy, enemies=enemies)
     previous_time = time.perf_counter()
 
     while key_handle_events.running:
@@ -121,7 +132,7 @@ def main():
 
         # Keep the event/render loop responsive and discard simulation time spent in the menu.
         simulation_delta = 0.0 if menu_was_open or well.menu.is_open else delta_time
-        advance_simulation(player, dice_ui, simulation_delta, campfire=campfire, dummy=dummy)
+        advance_simulation(player, dice_ui, simulation_delta, campfire=campfire, dummy=dummy, enemies=enemies)
         clear_canvas()
         world.draw()
         update_canvas()

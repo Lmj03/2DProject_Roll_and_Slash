@@ -21,11 +21,15 @@ class player:
         'QUICK_THRUST': (0.05, 6),        # Frame time in seconds, frame count.
         'HORIZONTAL_SLASH': (0.065, 6),
         'DASH_CHOP': (0.06, 8),
+        'PARRY': (0.065, 5),
+        'PARRY_COUNTER': (0.052, 5),
         'SWORD_SPIN': (0.05, 8),
         'FLASH_STRIKE': (0.06, 4),
     }
     ATTACK_STATES = ('ATTACK', *SWORD_SKILL_TIMINGS)
     DASH_CHOP_DISTANCE = 96.0  # World pixels on open ground.
+    PARRY_ACTIVE_FRAMES = (1, 2)
+    PARRY_STUN_DURATION = 1.0
     SPIN_DURATION = 2.0
     SPIN_HIT_INTERVAL = 0.25
     SPIN_DAMAGE_MULTIPLIER = 0.25
@@ -78,6 +82,8 @@ class player:
                 {'trigger': 'start_quick_thrust', 'source': ['IDLE', 'RUN'], 'dest': 'QUICK_THRUST'},
                 {'trigger': 'start_horizontal_slash', 'source': ['IDLE', 'RUN'], 'dest': 'HORIZONTAL_SLASH'},
                 {'trigger': 'start_dash_chop', 'source': ['IDLE', 'RUN'], 'dest': 'DASH_CHOP'},
+                {'trigger': 'start_parry', 'source': ['IDLE', 'RUN'], 'dest': 'PARRY'},
+                {'trigger': 'start_parry_counter', 'source': 'PARRY', 'dest': 'PARRY_COUNTER'},
                 {'trigger': 'start_sword_spin', 'source': ['IDLE', 'RUN'], 'dest': 'SWORD_SPIN'},
                 {'trigger': 'start_flash_strike', 'source': ['IDLE', 'RUN'], 'dest': 'FLASH_STRIKE'},
                 {'trigger': 'stop_attack', 'source': list(self.ATTACK_STATES), 'dest': 'IDLE'},
@@ -87,9 +93,14 @@ class player:
             after_state_change='_reset_animation',
         )
 
-    def take_damage(self, amount):
-        """Apply already-resolved damage and return the actual HP lost."""
+    def take_damage(self, amount, *, attacker=None):
+        """Apply validated damage. An enemy attacker can receive a parry counter."""
         if not isfinite(amount) or amount <= 0 or self.hp <= 0:
+            return 0
+        if (attacker is not None and self.state == 'PARRY'
+                and self.frame in self.PARRY_ACTIVE_FRAMES):
+            self.start_parry_counter()
+            attacker.receive_parry(self.attack_power, self.PARRY_STUN_DURATION)
             return 0
         damage = min(self.hp, amount)
         self.hp = max(0, self.hp - damage)
@@ -144,13 +155,11 @@ class player:
                 0: self.start_quick_thrust,
                 1: self.start_horizontal_slash,
                 2: self.start_dash_chop,
+                3: self.start_parry,
                 4: self.start_sword_spin,
                 5: self.start_flash_strike,
             }
-            if index in skill_starters:
-                self._try_sword_skill(index, skill_starters[index])
-            elif self.sword_stacks[index] > 0:
-                self.sword_stacks[index] -= 1
+            self._try_sword_skill(index, skill_starters[index])
             return
 
         if event.key not in movement.MOVEMENT_KEYS:

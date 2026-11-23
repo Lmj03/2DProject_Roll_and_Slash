@@ -3,6 +3,7 @@ from pico2d import load_font, load_image
 from bounding_box import BoundingBox
 from damage_popups import add_damage_popup, draw_damage_popups, update_damage_popups
 from lobby_map import FOOT_RADIUS, TRAINING_DUMMY_POSITION
+from player_attack_contact import PlayerAttackContact
 
 
 class TrainingDummy:
@@ -23,42 +24,30 @@ class TrainingDummy:
                                    self.x + 24, self.foot_y + 82)
         self.movement_box = footprint.expanded(FOOT_RADIUS)
         self._hit_time = None
-        self._last_attack_id = None
-        self._spin_hit_remaining = 0.0
-        self._spin_popup_index = 0
+        self.stun_remaining = 0.0
+        self._player_contact = PlayerAttackContact()
 
     def blocks(self, x, foot_y):
         return self.movement_box.contains(x, foot_y)
 
     def check_attack(self, player):
-        spinning = player.state == 'SWORD_SPIN'
-        if player.attack_id == self._last_attack_id and (not spinning or self._spin_hit_remaining > 1e-9):
-            return
-        attack = player.renderer.attack_box(player)
-        if attack is None:
-            return
-        overlaps = attack.ellipse_overlaps if spinning else attack.overlaps
-        if not overlaps(self.hurtbox):
-            return
+        hit = self._player_contact.hit(player, self.hurtbox)
+        if hit is not None:
+            damage, offset = hit
+            self._show_hit(damage, self.x + offset)
+
+    def receive_parry(self, damage, stun_duration):
+        self.stun_remaining = max(self.stun_remaining, stun_duration)
+        self._show_hit(damage, self.x)
+
+    def _show_hit(self, damage, popup_x):
         self._hit_time = 0.0
-        damage = player.attack_power
-        popup_x = self.x
-        if spinning:
-            if self._last_attack_id != player.attack_id:
-                self._spin_popup_index = 0
-            self._spin_hit_remaining = player.SPIN_HIT_INTERVAL
-            damage *= player.SPIN_DAMAGE_MULTIPLIER
-            # Stagger consecutive numbers so they remain readable while rising.
-            popup_x += (-24, 24, 0)[self._spin_popup_index % 3]
-            self._spin_popup_index += 1
-        if player.state == 'FLASH_STRIKE':
-            damage *= player.FLASH_STRIKE_DAMAGE_MULTIPLIER
-        self._last_attack_id = player.attack_id
         add_damage_popup(self.damage_popups, damage, popup_x, self.hurtbox.top + 10)
 
     def update(self, delta_time):
         update_damage_popups(self.damage_popups, delta_time)
-        self._spin_hit_remaining = max(0.0, self._spin_hit_remaining - delta_time)
+        self._player_contact.update(delta_time)
+        self.stun_remaining = max(0.0, self.stun_remaining - delta_time)
         if self._hit_time is not None:
             self._hit_time += delta_time
             if self._hit_time >= self.HIT_FRAME_TIME * self.HIT_FRAME_COUNT:
@@ -66,6 +55,8 @@ class TrainingDummy:
 
     def draw(self):
         frame = 0 if self._hit_time is None else 1 + int(self._hit_time / self.HIT_FRAME_TIME)
+        if frame == 0 and self.stun_remaining > 0:
+            frame = self.HIT_FRAME_COUNT
         self.sheet.clip_draw(frame * self.CELL_SIZE, 0, self.CELL_SIZE, self.CELL_SIZE,
                              self.x, self.foot_y + self.FEET_TO_CENTER, self.DRAW_SIZE, self.DRAW_SIZE)
         draw_damage_popups(self.damage_font, self.damage_popups)
