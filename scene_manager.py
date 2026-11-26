@@ -1,7 +1,7 @@
 import key_handle_events
 from dice_ui import DiceRollUI
 from lobby_map import CANVAS_HEIGHT, CANVAS_WIDTH, PLAYER_START
-from scenes import create_lobby_scene, create_outer_fortress_scene
+from scenes import create_lobby_scene, create_outer_fortress_scene, create_talisman_gallery_scene
 
 
 class SceneManager:
@@ -12,18 +12,20 @@ class SceneManager:
         self._scenes = {
             'lobby': create_lobby_scene(player, self.dice_ui),
             'outer_fortress': create_outer_fortress_scene(player, self.dice_ui),
+            'talisman_gallery': create_talisman_gallery_scene(player, self.dice_ui),
         }
         self.current = self._scenes['lobby']
 
     def advance(self, delta_time):
         scene = self.current
         menu_was_open = scene.well is not None and scene.well.menu.is_open
-        key_handle_events.handle_events(self.player, self.dice_ui, scene.well, door=scene.door)
+        key_handle_events.handle_events(self.player, self.dice_ui, scene.well, doors=scene.doors)
         if not key_handle_events.running:
             return False
 
-        if scene.door.take_request():
-            self.current = self._scenes[scene.destination]
+        door = next((door for door in scene.doors if door.take_request()), None)
+        if door is not None:
+            self.current = self._scenes[door.destination]
             self.current.enter(self.player)
         else:
             menu_is_open = scene.well is not None and scene.well.menu.is_open

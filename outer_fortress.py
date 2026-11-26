@@ -1,5 +1,3 @@
-from pico2d import load_image
-
 from bounding_box import BoundingBox
 from collision import _polygon_location
 
@@ -7,6 +5,7 @@ from collision import _polygon_location
 SIZE = 2400, 1100
 ENTRY = 172, 300  # World coordinates at the player's feet.
 RETURN_AREA = BoundingBox(25, 258, 110, 315)
+GALLERY_EXIT_AREA = BoundingBox(2138, 515, 2265, 614)
 # The first point of each patrol loop is the spawn at ground level.
 WEST_COURT = BoundingBox(342, 200, 1040, 736)
 EAST_COURT = BoundingBox(1240, 190, 2245, 841)
@@ -38,7 +37,8 @@ WALKABLE = tuple((x * 2, y * 2) for x, y in (
     (522, 359), (523, 340), (525, 319), (530, 301), (536, 284),
     (544, 267), (555, 251), (568, 232), (560, 181), (580, 156), (618, 138),
     (897, 132), (951, 142), (982, 173), (1001, 234), (1017, 266),
-    (1056, 289), (1127, 322), (1101, 374), (1075, 401), (1016, 429),
+    (1048, 272), (1059, 247), (1080, 239), (1129, 255), (1140, 267),
+    (1134, 286), (1127, 322), (1101, 374), (1075, 401), (1016, 429),
     (967, 447), (813, 452), (704, 453), (661, 439),
     (638, 420), (629, 399), (621, 383), (616, 369), (582, 355),
     (583, 374), (573, 390), (568, 409), (582, 449),
@@ -50,25 +50,3 @@ WALKABLE = tuple((x * 2, y * 2) for x, y in (
 def can_walk(x, foot_y):
     inside, near_edge = _polygon_location(x, SIZE[1] - foot_y, WALKABLE)
     return inside and not near_edge
-
-
-class Background:
-    def __init__(self):
-        self.image = load_image('asset/maps/stage_01_outer_fortress.png')
-        if (self.image.w, self.image.h) != SIZE:
-            raise ValueError('The outer fortress map must be 2400 by 1100 pixels.')
-
-    def draw(self, camera):
-        left, bottom = camera.origin
-        x, y = camera.project(left + camera.width / 2, bottom + camera.height / 2)
-        self.image.clip_draw(left, bottom, camera.width, camera.height, x, y)
-
-
-class GateWallSprite:
-    def __init__(self, name, left, top):
-        self.image = load_image(f'asset/maps/{name}')
-        self.x = left + self.image.w / 2
-        self.y = SIZE[1] - top - self.image.h / 2
-
-    def draw(self, camera):
-        self.image.draw(*camera.project(self.x, self.y))

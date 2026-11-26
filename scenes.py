@@ -6,6 +6,7 @@ from pico2d import load_image
 import game_world
 import lobby_map
 import outer_fortress
+import talisman_gallery
 import ui
 from armored_wraith import ArmoredWraith
 from bounding_box import BoundingBox
@@ -24,6 +25,28 @@ from well_interaction import WellInteraction
 
 
 SHOW_COLLISION_BOXES = False
+
+
+class MapBackground:
+    def __init__(self, filename, size):
+        self.image = load_image(f'asset/maps/{filename}')
+        if (self.image.w, self.image.h) != size:
+            raise ValueError(f'{filename} must be {size[0]} by {size[1]} pixels.')
+
+    def draw(self, camera):
+        left, bottom = camera.origin
+        x, y = camera.project(left + camera.width / 2, bottom + camera.height / 2)
+        self.image.clip_draw(left, bottom, camera.width, camera.height, x, y)
+
+
+class MapObjectSprite:
+    def __init__(self, name, left, top, map_height):
+        self.image = load_image(f'asset/maps/{name}')
+        self.x = left + self.image.w / 2
+        self.y = map_height - top - self.image.h / 2
+
+    def draw(self, camera):
+        self.image.draw(*camera.project(self.x, self.y))
 
 
 class LobbySprite:
@@ -82,10 +105,9 @@ def add_hud(world, player, dice_ui):
 @dataclass
 class Scene:
     world: game_world.GameWorld
-    door: MapDoor
     arrival: tuple
     facing: int
-    destination: str
+    doors: tuple[MapDoor, ...] = ()
     enemies: tuple = ()
     can_move: Callable[[float, float], bool] = can_walk_in_lobby
     camera: Camera | None = None
@@ -116,7 +138,8 @@ class Scene:
 def create_outer_fortress_scene(player, dice_ui):
     world = game_world.GameWorld()
     camera = Camera((CANVAS_WIDTH, CANVAS_HEIGHT), outer_fortress.SIZE)
-    door = MapDoor(player, outer_fortress.RETURN_AREA, '[E] Return to Lobby', camera)
+    return_door = MapDoor(player, outer_fortress.RETURN_AREA, '[E] Return to Lobby',
+                          destination='lobby', camera=camera)
     wraiths = tuple(ArmoredWraith(route[0], patrol=route, patrol_area=area)
                     for area, route in outer_fortress.WRAITH_PATROLS)
     hounds = tuple(SkullHound(route[0], patrol=route, patrol_area=area)
@@ -124,20 +147,45 @@ def create_outer_fortress_scene(player, dice_ui):
     route = outer_fortress.STATUE_PATROL
     statue = TalismanStatue(route[0], patrol=route, patrol_area=outer_fortress.EAST_COURT)
     enemies = (*wraiths, *hounds, statue)
-    world.add(outer_fortress.Background(), game_world.BACKGROUND)
+
+    def gallery_lock_label():
+        remaining = sum(enemy.hp > 0 for enemy in enemies)
+        if remaining == 1:
+            return '1 enemy remaining'
+        if remaining:
+            return f'{remaining} enemies remaining'
+        return None
+
+    gallery_door = MapDoor(player, outer_fortress.GALLERY_EXIT_AREA, '[E] Enter Talisman Gallery',
+                           destination='talisman_gallery', camera=camera, locked_label=gallery_lock_label)
+    world.add(MapBackground('stage_01_outer_fortress.png', outer_fortress.SIZE), game_world.BACKGROUND)
     world.add(LandingWarning(statue), game_world.BACKGROUND)
     for enemy in enemies:
         world.add(enemy, game_world.OBJECTS, foot_y=lambda enemy=enemy: enemy.foot_y)
     world.add(player, game_world.OBJECTS, foot_y=lambda: player.y - player.FOOT_OFFSET_Y)
     for name, left, top, foot_y in outer_fortress.GATE_PIERS:
-        world.add(outer_fortress.GateWallSprite(name, left, top), game_world.OBJECTS,
-                  foot_y=lambda y=foot_y: y)
-    lintel = outer_fortress.GateWallSprite(*outer_fortress.GATE_LINTEL)
+        pier = MapObjectSprite(name, left, top, outer_fortress.SIZE[1])
+        world.add(pier, game_world.OBJECTS, foot_y=lambda y=foot_y: y)
+    lintel = MapObjectSprite(*outer_fortress.GATE_LINTEL, outer_fortress.SIZE[1])
     world.add(lintel, game_world.FOREGROUND)
     add_hud(world, player, dice_ui)
-    world.add(door, game_world.UI)
-    return Scene(world, door, outer_fortress.ENTRY, player.RIGHT, destination='lobby',
+    world.add(return_door, game_world.UI)
+    world.add(gallery_door, game_world.UI)
+    return Scene(world, outer_fortress.ENTRY, player.RIGHT, doors=(return_door, gallery_door),
                  enemies=enemies, can_move=outer_fortress.can_walk, camera=camera)
+
+
+def create_talisman_gallery_scene(player, dice_ui):
+    world = game_world.GameWorld()
+    camera = Camera((CANVAS_WIDTH, CANVAS_HEIGHT), talisman_gallery.SIZE)
+    world.add(MapBackground('stage_02_talisman_gallery.png', talisman_gallery.SIZE), game_world.BACKGROUND)
+    for name, left, top, foot_y in talisman_gallery.PILLAR_SPRITES:
+        pillar = MapObjectSprite(name, left, top, talisman_gallery.SIZE[1])
+        world.add(pillar, game_world.OBJECTS, foot_y=lambda y=foot_y: y)
+    world.add(player, game_world.OBJECTS, foot_y=lambda: player.y - player.FOOT_OFFSET_Y)
+    add_hud(world, player, dice_ui)
+    return Scene(world, talisman_gallery.ENTRY, player.RIGHT, can_move=talisman_gallery.can_walk,
+                 camera=camera)
 
 
 def create_lobby_scene(player, dice_ui):
@@ -145,7 +193,8 @@ def create_lobby_scene(player, dice_ui):
     campfire = Campfire()
     dummy = TrainingDummy()
     world = create_lobby_world(player, dice_ui, well, campfire, dummy)
-    door = MapDoor(player, BoundingBox(*lobby_map.NORTH_DOOR_AREA), '[E] Enter Outer Fortress')
+    door = MapDoor(player, BoundingBox(*lobby_map.NORTH_DOOR_AREA), '[E] Enter Outer Fortress',
+                   destination='outer_fortress')
     world.add(door, game_world.UI)
-    return Scene(world, door, lobby_map.NORTH_DOOR_RETURN, player.DOWN, destination='outer_fortress',
+    return Scene(world, lobby_map.NORTH_DOOR_RETURN, player.DOWN, doors=(door,),
                  well=well, campfire=campfire, dummy=dummy)
