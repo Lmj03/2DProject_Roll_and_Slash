@@ -26,17 +26,17 @@
   "asset/skills/quick_thrust/quick_thrust_right_fx_180x100.png": [
     [null, [112, 45, 144, 50], [109, 42, 171, 53], [117, 41, 177, 53], [114, 40, 144, 44], null]
   ],
-  "asset/skills/horizontal_slash/horizontal_slash_up_fx_100x180.png": [
-    [null, null, [21, 100, 97, 151], [3, 99, 97, 151], [3, 100, 92, 151], null]
+  "asset/skills/horizontal_slash/horizontal_slash_up_fx_200x270.png": [
+    [null, null, [42, 150.0, 194, 226.5], [6, 148.5, 194, 226.5], [6, 150.0, 184, 226.5], null]
   ],
-  "asset/skills/horizontal_slash/horizontal_slash_down_fx_100x180.png": [
-    [null, null, [3, 48, 79, 100], [3, 48, 97, 101], [8, 48, 97, 100], null]
+  "asset/skills/horizontal_slash/horizontal_slash_down_fx_200x270.png": [
+    [null, null, [6, 72.0, 158, 150.0], [6, 72.0, 194, 151.5], [16, 72.0, 194, 150.0], null]
   ],
-  "asset/skills/horizontal_slash/horizontal_slash_left_fx_180x100.png": [
-    [null, null, [40, 48, 99, 85], [40, 9, 99, 85], [40, 9, 98, 81], null]
+  "asset/skills/horizontal_slash/horizontal_slash_left_fx_360x150.png": [
+    [null, null, [80, 72.0, 198, 127.5], [80, 13.5, 198, 127.5], [80, 13.5, 196, 121.5], null]
   ],
-  "asset/skills/horizontal_slash/horizontal_slash_right_fx_180x100.png": [
-    [null, null, [81, 48, 140, 85], [81, 9, 140, 85], [82, 9, 140, 81], null]
+  "asset/skills/horizontal_slash/horizontal_slash_right_fx_360x150.png": [
+    [null, null, [162, 72.0, 280, 127.5], [162, 13.5, 280, 127.5], [164, 13.5, 280, 121.5], null]
   ],
   "asset/skills/dash_chop/dash_chop_up_fx_100x180.png": [
     [null, null, [45, 18, 57, 63], [44, 10, 58, 67], [44, 29, 81, 114], [50, 68, 86, 113], [76, 92, 86, 112], null]

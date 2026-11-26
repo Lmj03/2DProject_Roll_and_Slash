@@ -101,7 +101,7 @@ class PlayerRenderer:
     def _load_sword_skill_sheets(self, skill):
         sheets = {}
         for direction, name in ((UP, 'up'), (DOWN, 'down'), (LEFT, 'left'), (RIGHT, 'right')):
-            width, height = self._trail_cell_size(direction)
+            width, height = self._trail_cell_size(direction, skill)
             path = f'asset/skills/{skill}/{skill}_{name}'
             sheets[direction] = (
                 self._load_sprite(f'{path}_motion_100x100.png'),
@@ -110,8 +110,11 @@ class PlayerRenderer:
         return sheets
 
     @staticmethod
-    def _trail_cell_size(direction):
-        return (100, 180) if direction in (UP, DOWN) else (180, 100)
+    def _trail_cell_size(direction, skill=None):
+        vertical = direction in (UP, DOWN)
+        if skill == 'horizontal_slash':
+            return (200, 270) if vertical else (360, 150)
+        return (100, 180) if vertical else (180, 100)
 
     def draw(self, player, camera=None):
         if player.flash_path is not None:
@@ -172,7 +175,7 @@ class PlayerRenderer:
         return SpriteFrame(image, row=self.ANIMATION_ROWS[player.dir])
 
     def _trail_frame(self, player):
-        width, height = self._trail_cell_size(player.dir)
+        width, height = self._trail_cell_size(player.dir, player.state.lower())
         if player.state == 'ATTACK':
             direction = RIGHT if player.dir == LEFT else player.dir
             _, trail = self.attack_sheets[direction]
