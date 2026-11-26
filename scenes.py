@@ -17,6 +17,7 @@ from dice_ui import DiceRollUI
 from lobby_map import CANVAS_HEIGHT, CANVAS_WIDTH
 from map_door import MapDoor
 from simulation import advance_simulation
+from skull_hound import SkullHound
 from talisman_statue import LandingWarning, TalismanStatue
 from training_dummy import TrainingDummy
 from well_interaction import WellInteraction
@@ -118,9 +119,11 @@ def create_outer_fortress_scene(player, dice_ui):
     door = MapDoor(player, outer_fortress.RETURN_AREA, '[E] Return to Lobby', camera)
     wraiths = tuple(ArmoredWraith(route[0], patrol=route, patrol_area=area)
                     for area, route in outer_fortress.WRAITH_PATROLS)
+    hounds = tuple(SkullHound(route[0], patrol=route, patrol_area=area)
+                   for area, route in outer_fortress.HOUND_PATROLS)
     route = outer_fortress.STATUE_PATROL
     statue = TalismanStatue(route[0], patrol=route, patrol_area=outer_fortress.EAST_COURT)
-    enemies = (*wraiths, statue)
+    enemies = (*wraiths, *hounds, statue)
     world.add(outer_fortress.Background(), game_world.BACKGROUND)
     world.add(LandingWarning(statue), game_world.BACKGROUND)
     for enemy in enemies:
