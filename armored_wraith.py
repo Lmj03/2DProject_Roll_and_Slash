@@ -1,7 +1,6 @@
 from math import hypot
 
 from pico2d import load_image
-from sdl2 import SDL_SetTextureColorMod
 
 from bounding_box import BoundingBox
 from enemy import Enemy
@@ -36,6 +35,8 @@ class ArmoredWraith(Enemy):
 
         self.walk_sheet = load_image('asset/m1.png')
         self.attack_sheet = load_image('asset/m1_attack.png')
+        self.walk_flash_sheet = load_image('asset/hit_flash/m1.png')
+        self.attack_flash_sheet = load_image('asset/hit_flash/m1_attack.png')
         self.vertical_trail = load_image('asset/m1_attack_udtrail.png')
         self.horizontal_trail = load_image('asset/m1_attack_lrtrail.png')
 
@@ -111,7 +112,7 @@ class ArmoredWraith(Enemy):
         return None
 
     def draw(self, camera=None):
-        if self.hp > 0:
+        if self.hp > 0 or self.hit_flash_remaining > 0:
             x, y, foot_y = self.x, self._sprite_y, self.foot_y
             if camera is not None:
                 x, y = camera.project(x, y)
@@ -122,15 +123,12 @@ class ArmoredWraith(Enemy):
             frame = self._attack_frame() if attacking else self.walk_frame
             cell = self.CELL_SIZE
             draw_size = round(cell * self.DRAW_SCALE)
-            if self.stun_remaining > 0:
-                SDL_SetTextureColorMod(sheet.texture, 140, 185, 255)
-            sheet.clip_draw(frame * cell, self.ROWS[self.facing] * cell, cell, cell,
-                            x, y, draw_size, draw_size)
-            if self.stun_remaining > 0:
-                SDL_SetTextureColorMod(sheet.texture, 255, 255, 255)
+            flash_sheet = self.attack_flash_sheet if attacking else self.walk_flash_sheet
+            self._draw_body(sheet, flash_sheet, frame, self.ROWS[self.facing], cell, x, y, draw_size)
             if attacking and frame in (self.HIT_FRAME, self.HIT_FRAME + 1):
                 trail, row, width, height = self._trail_cell()
                 trail.clip_draw(frame * width, row * height, width, height, x, y,
                                 round(width * self.DRAW_SCALE), round(height * self.DRAW_SCALE))
-            self._draw_health_bar(x, foot_y)
+            if self.hp > 0:
+                self._draw_health_bar(x, foot_y)
         self._draw_damage_popups(camera)

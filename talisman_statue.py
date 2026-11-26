@@ -1,7 +1,6 @@
 from math import hypot
 
 from pico2d import draw_circle, load_image
-from sdl2 import SDL_SetTextureColorMod
 
 from armored_wraith import ArmoredWraith
 from enemy import Enemy
@@ -39,6 +38,8 @@ class TalismanStatue(Enemy):
         self._throw_origin = position
         self.walk_sheet = load_image('asset/m2.png')
         self.throw_sheet = load_image('asset/monsters/m2_throw.png')
+        self.walk_flash_sheet = load_image('asset/hit_flash/m2.png')
+        self.throw_flash_sheet = load_image('asset/hit_flash/m2_throw.png')
         self.rock_image = load_image('asset/monsters/m2_boulder.png')
 
     def act(self, player, delta_time, can_move):
@@ -122,19 +123,17 @@ class TalismanStatue(Enemy):
         self.rock_image.draw(x, y, 42, 40)
 
     def draw(self, camera=None):
-        if self.hp > 0:
+        if self.hp > 0 or self.hit_flash_remaining > 0:
             x, foot_y = self._screen_position(camera, self.x, self.foot_y)
             self.shadow.draw(x, foot_y, 90, 13)
             sheet, frame = self._pose()
-            if self.stun_remaining > 0:
-                SDL_SetTextureColorMod(sheet.texture, 140, 185, 255)
+            flash_sheet = self.throw_flash_sheet if sheet is self.throw_sheet else self.walk_flash_sheet
             cell = self.CELL_SIZE
-            sheet.clip_draw(frame * cell, self.ROWS[self.facing] * cell, cell, cell,
-                            x, foot_y + self.FEET_TO_CENTER)
-            if self.stun_remaining > 0:
-                SDL_SetTextureColorMod(sheet.texture, 255, 255, 255)
-            self._draw_boulder(camera)
-            self._draw_health_bar(x, foot_y)
+            self._draw_body(sheet, flash_sheet, frame, self.ROWS[self.facing], cell,
+                            x, foot_y + self.FEET_TO_CENTER, cell)
+            if self.hp > 0:
+                self._draw_boulder(camera)
+                self._draw_health_bar(x, foot_y)
         self._draw_damage_popups(camera)
 
 

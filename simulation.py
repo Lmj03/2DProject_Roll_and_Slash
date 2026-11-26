@@ -18,12 +18,20 @@ def advance_simulation(player, dice_ui, delta_time, can_move=can_walk_in_lobby, 
     # Equipment can change while simulation time is paused in the well menu.
     dice_ui.update(0.0)
     remaining = delta_time
-    if remaining > 0 and player.state == 'FLASH_STRIKE' and player.flash_path is None:
-        player.resolve_flash_strike(can_move, can_step)
-        # Check all targets at departure time; the remaining frames are visual recovery.
-        for target in combat_targets:
-            target.check_attack(player)
     while remaining > 0:
+        if player.hit_stop_remaining > 0:
+            paused = min(remaining, player.hit_stop_remaining)
+            player.hit_stop_remaining -= paused
+            remaining -= paused
+            # Input and the dice HUD remain responsive while combat is frozen.
+            dice_ui.update(paused)
+            continue
+        if player.state == 'FLASH_STRIKE' and player.flash_path is None:
+            player.resolve_flash_strike(can_move, can_step)
+            for target in combat_targets:
+                target.check_attack(player)
+            if player.hit_stop_remaining > 0:
+                continue
         # Bound movement during contact checks, including slow frames and speed buffs.
         step = min(remaining, campfire.SIMULATION_STEP) if campfire is not None else remaining
         if combat_targets:

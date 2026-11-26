@@ -1,3 +1,6 @@
+HIT_FLASH_DURATION = 0.045
+
+
 class PlayerAttackContact:
     """Track one target's hits from the player's current swing."""
 
@@ -34,4 +37,6 @@ class PlayerAttackContact:
         elif player.state == 'FLASH_STRIKE':
             damage *= player.FLASH_STRIKE_DAMAGE_MULTIPLIER
         self.last_attack_id = player.attack_id
+        if damage > 0:
+            player.request_hit_stop()
         return damage, popup_offset

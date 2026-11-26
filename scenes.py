@@ -95,6 +95,7 @@ class Scene:
         player.x, foot_y = self.arrival
         player.y = foot_y + player.FOOT_OFFSET_Y
         player.damage_popups.clear()
+        player.hit_stop_remaining = 0.0
         if self.camera is not None:
             self.camera.follow(player.x, player.y, snap=True)
 

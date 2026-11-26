@@ -41,6 +41,14 @@ class player:
     ALLOW_SKILLS_WITHOUT_STACKS = True
     ANIMATION_EPSILON = 1e-9  # Tolerance for floating-point frame boundaries.
     HIT_FLASH_TIME = 0.16
+    HIT_STOP_TIMES = {
+        'ATTACK': 0.060,
+        'QUICK_THRUST': 0.060,
+        'HORIZONTAL_SLASH': 0.060,
+        'DASH_CHOP': 0.100,
+        'PARRY_COUNTER': 0.100,
+        'FLASH_STRIKE': 0.080,
+    }
     DAMAGE_POPUP_TIME = POPUP_DURATION
     FOOT_OFFSET_Y = 36  # Distance below the center of an unscaled sprite.
 
@@ -48,6 +56,8 @@ class player:
         self.max_hp = 100
         self.hp = self.max_hp
         self.hit_flash_remaining = 0.0
+        self.hit_stop_remaining = 0.0
+        self._last_hit_stop_attack_id = None
         self.damage_popups = []
         self.buffs = BuffState()
         self.base_attack_power = 50
@@ -101,12 +111,19 @@ class player:
                 and self.frame in self.PARRY_ACTIVE_FRAMES):
             self.start_parry_counter()
             attacker.receive_parry(self.attack_power, self.PARRY_STUN_DURATION)
+            self.request_hit_stop()
             return 0
         damage = min(self.hp, amount)
         self.hp = max(0, self.hp - damage)
         self.hit_flash_remaining = self.HIT_FLASH_TIME
         add_damage_popup(self.damage_popups, damage, self.x, self.y + 55, self.DAMAGE_POPUP_TIME)
         return damage
+
+    def request_hit_stop(self):
+        duration = self.HIT_STOP_TIMES.get(self.state, 0.0)
+        if duration and self._last_hit_stop_attack_id != self.attack_id:
+            self.hit_stop_remaining = duration
+            self._last_hit_stop_attack_id = self.attack_id
 
     @property
     def attack_power(self):

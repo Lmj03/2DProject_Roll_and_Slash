@@ -1,11 +1,12 @@
 from math import ceil, hypot
 
 from pico2d import draw_rectangle, load_font, load_image
+from sdl2 import SDL_SetTextureColorMod
 
 from bounding_box import BoundingBox
 from damage_popups import add_damage_popup, draw_damage_popups, update_damage_popups
 from lobby_map import FOOT_RADIUS
-from player_attack_contact import PlayerAttackContact
+from player_attack_contact import HIT_FLASH_DURATION, PlayerAttackContact
 from player_movement import DOWN, LEFT, RIGHT, UP, move_position
 
 
@@ -37,6 +38,7 @@ class Enemy:
         self._cooldown = 0.0
         self.stun_remaining = 0.0
         self.damage_popups = []
+        self.hit_flash_remaining = 0.0
         self._player_contact = PlayerAttackContact()
         self.damage_font = load_font('asset/fonts/SourceCodePro-Bold.ttf', 16)
         self.shadow = load_image('asset/player_shadow.png')
@@ -68,6 +70,7 @@ class Enemy:
     def update(self, delta_time):
         update_damage_popups(self.damage_popups, delta_time)
         self._player_contact.update(delta_time)
+        self.hit_flash_remaining = max(0.0, self.hit_flash_remaining - delta_time)
         self.stun_remaining = max(0.0, self.stun_remaining - delta_time)
         self._cooldown = max(0.0, self._cooldown - delta_time)
 
@@ -89,6 +92,7 @@ class Enemy:
         if actual <= 0:
             return
         self.hp -= actual
+        self.hit_flash_remaining = HIT_FLASH_DURATION
         popup_y = self.foot_y + self.HEALTH_BAR_OFFSET_Y + self.HEALTH_BAR_HEIGHT + 15
         add_damage_popup(self.damage_popups, actual, self.x + offset, popup_y)
         if self.hp <= 0:
@@ -138,6 +142,16 @@ class Enemy:
         if abs(dx) >= abs(dy):
             return RIGHT if dx >= 0 else LEFT
         return UP if dy > 0 else DOWN
+
+    def _draw_body(self, sheet, flash_sheet, frame, row, cell, x, y, draw_size):
+        flashing = self.hit_flash_remaining > 0
+        image = flash_sheet if flashing else sheet
+        tinted = not flashing and self.stun_remaining > 0
+        if tinted:
+            SDL_SetTextureColorMod(image.texture, 140, 185, 255)
+        image.clip_draw(frame * cell, row * cell, cell, cell, x, y, draw_size, draw_size)
+        if tinted:
+            SDL_SetTextureColorMod(image.texture, 255, 255, 255)
 
     def _draw_health_bar(self, x, foot_y):
         left = round(x) - self.HEALTH_BAR_WIDTH // 2
