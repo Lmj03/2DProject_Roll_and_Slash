@@ -16,6 +16,7 @@ class ArmoredWraith(Enemy):
     HIT_FRAME = 3
     ATTACK_COOLDOWN = 0.45
     ATTACK_DAMAGE = 12
+    ATTACK_BOX_INSET = 5  # World pixels from each edge.
     MAX_HP = 200
     AGGRO_RADIUS = 190
     MOVE_SPEED = 100
@@ -104,7 +105,8 @@ class ArmoredWraith(Enemy):
         scale = self.DRAW_SCALE
         x = self.x - width * scale / 2
         y = self._sprite_y - height * scale / 2
-        return BoundingBox(x + left * scale, y + bottom * scale, x + right * scale, y + top * scale)
+        box = BoundingBox(x + left * scale, y + bottom * scale, x + right * scale, y + top * scale)
+        return box.expanded(-self.ATTACK_BOX_INSET)
 
     def attack_box(self):
         if self._attack_time is not None and self._attack_frame() == self.HIT_FRAME:
