@@ -35,17 +35,17 @@ class TrainingDummy:
     def check_attack(self, player):
         hit = self._player_contact.hit(player, self.hurtbox)
         if hit is not None:
-            damage, offset = hit
-            self._show_hit(damage, self.x + offset)
+            damage, offset, critical = hit
+            self._show_hit(damage, self.x + offset, critical=critical)
 
-    def receive_parry(self, damage, stun_duration):
+    def receive_parry(self, damage, stun_duration, *, critical=False):
         self.stun_remaining = max(self.stun_remaining, stun_duration)
-        self._show_hit(damage, self.x)
+        self._show_hit(damage, self.x, critical=critical)
 
-    def _show_hit(self, damage, popup_x):
+    def _show_hit(self, damage, popup_x, *, critical=False):
         self._hit_time = 0.0
         self.hit_flash_remaining = HIT_FLASH_DURATION
-        add_damage_popup(self.damage_popups, damage, popup_x, self.hurtbox.top + 10)
+        add_damage_popup(self.damage_popups, damage, popup_x, self.hurtbox.top + 10, critical=critical)
 
     def update(self, delta_time):
         update_damage_popups(self.damage_popups, delta_time)

@@ -25,18 +25,19 @@ class PlayerAttackContact:
         if not overlaps(hurtbox):
             return None
 
-        damage = player.attack_power
+        multiplier = 1.0
         popup_offset = 0
         if spinning:
             if not same_attack:
                 self.spin_popup_index = 0
             self.spin_hit_remaining = player.SPIN_HIT_INTERVAL
-            damage *= player.SPIN_DAMAGE_MULTIPLIER
+            multiplier = player.SPIN_DAMAGE_MULTIPLIER
             popup_offset = (-24, 24, 0)[self.spin_popup_index % 3]
             self.spin_popup_index += 1
         elif player.state == 'FLASH_STRIKE':
-            damage *= player.FLASH_STRIKE_DAMAGE_MULTIPLIER
+            multiplier = player.FLASH_STRIKE_DAMAGE_MULTIPLIER
+        damage, critical = player.roll_attack_damage(multiplier)
         self.last_attack_id = player.attack_id
         if damage > 0:
             player.confirm_hit()
-        return damage, popup_offset
+        return damage, popup_offset, critical

@@ -76,7 +76,7 @@ class TalismanStatue(Enemy):
             dx, dy = player.x - self._aim[0], player_foot_y - self._aim[1]
             if hypot(dx, dy) <= self.LANDING_RADIUS:
                 # The boulder deals ground-impact damage, which cannot be parried.
-                player.take_damage(self.ROCK_DAMAGE)
+                player.take_damage(self.ROCK_DAMAGE, apply_defense=True)
         if self._attack_time is not None and self._attack_time >= self.IMPACT_TIME + self.AFTERMATH_TIME:
             self._attack_time = None
             self._cooldown = self.THROW_COOLDOWN

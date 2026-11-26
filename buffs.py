@@ -15,7 +15,6 @@ class BuffSpec:
 
 
 # Provisional balance: attack/speed/defense +5% per pip, critical chance +3 percentage points.
-# Defense increases the defense stat; damage reduction is left to the combat system.
 BUFF_SPECS = {
     'attack': BuffSpec('attack_power', 0.05, True, 0, 'ATK'),
     'move': BuffSpec('move_speed', 0.05, True, 1, 'SPEED'),

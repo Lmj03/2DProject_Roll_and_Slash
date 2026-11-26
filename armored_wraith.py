@@ -89,7 +89,7 @@ class ArmoredWraith(Enemy):
         attack = self.attack_box()
         if not self._attack_hit and attack is not None and body is not None and attack.overlaps(body):
             self._attack_hit = True
-            player.take_damage(self.ATTACK_DAMAGE, attacker=self)
+            player.take_damage(self.ATTACK_DAMAGE, attacker=self, apply_defense=True)
 
     def _attack_frame(self):
         return sum(self._attack_time + 1e-9 >= end for end in self.ATTACK_FRAME_ENDS[:-1])

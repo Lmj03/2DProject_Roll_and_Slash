@@ -2,6 +2,7 @@ from ctypes import byref, c_int
 from math import ceil
 
 from buffs import BUFF_SPECS
+from damage_popups import format_health_value
 
 from pico2d import TTF_SizeUTF8, load_font, load_image
 from sdl2 import SDL_SetTextureColorMod
@@ -44,7 +45,7 @@ class HealthBar:
                 draw_width, fill_height,
             )
 
-        text = f'{hp:g} / {max_hp:g}'
+        text = f'{format_health_value(hp)} / {format_health_value(max_hp)}'
         text_width = c_int()
         TTF_SizeUTF8(self.font.font, text.encode('utf-8'), byref(text_width), None)
         x = fill_left + (fill_width - text_width.value) / 2

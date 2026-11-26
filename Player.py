@@ -1,4 +1,5 @@
 from math import isfinite
+from random import random
 
 from pico2d import SDL_KEYDOWN, SDL_KEYUP, SDLK_1, SDLK_6, SDLK_a
 from transitions import Machine
@@ -42,6 +43,7 @@ class player:
     ALLOW_SKILLS_WITHOUT_STACKS = True
     ANIMATION_EPSILON = 1e-9  # Tolerance for floating-point frame boundaries.
     HIT_FLASH_TIME = 0.16
+    DEFENSE_DAMAGE_SCALE = 100.0
     HIT_STOP_TIMES = {
         'ATTACK': 0.060,
         'QUICK_THRUST': 0.060,
@@ -105,21 +107,32 @@ class player:
             after_state_change='_reset_animation',
         )
 
-    def take_damage(self, amount, *, attacker=None):
-        """Apply validated damage. An enemy attacker can receive a parry counter."""
+    def take_damage(self, amount, *, attacker=None, apply_defense=False):
+        """Apply damage with optional armor reduction and a parry target."""
         if not isfinite(amount) or amount <= 0 or self.hp <= 0:
             return 0
         if (attacker is not None and self.state == 'PARRY'
                 and self.frame in self.PARRY_ACTIVE_FRAMES):
             self.start_parry_counter()
-            attacker.receive_parry(self.attack_power, self.PARRY_STUN_DURATION)
+            damage, critical = self.roll_attack_damage()
+            attacker.receive_parry(damage, self.PARRY_STUN_DURATION, critical=critical)
             self.confirm_hit()
             return 0
+        if apply_defense:
+            scale = self.DEFENSE_DAMAGE_SCALE
+            amount *= scale / (scale + max(0.0, self.defense))
         damage = min(self.hp, amount)
         self.hp = max(0, self.hp - damage)
         self.hit_flash_remaining = self.HIT_FLASH_TIME
         add_damage_popup(self.damage_popups, damage, self.x, self.y + 55, self.DAMAGE_POPUP_TIME)
         return damage
+
+    def roll_attack_damage(self, multiplier=1.0):
+        damage = self.attack_power * multiplier
+        critical = random() < self.crit_chance
+        if critical:
+            damage *= self.crit_damage_multiplier
+        return damage, critical
 
     def confirm_hit(self):
         direction = movement.FACING_AXES[self.dir]

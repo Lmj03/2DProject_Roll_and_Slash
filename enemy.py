@@ -79,22 +79,22 @@ class Enemy:
         if box is not None:
             hit = self._player_contact.hit(player, box)
             if hit is not None:
-                damage, offset = hit
-                self._take_damage(damage, offset)
+                damage, offset, critical = hit
+                self._take_damage(damage, offset, critical=critical)
 
-    def receive_parry(self, damage, stun_duration):
+    def receive_parry(self, damage, stun_duration, *, critical=False):
         self._attack_time = None
         self.stun_remaining = max(self.stun_remaining, stun_duration)
-        self._take_damage(damage, 0)
+        self._take_damage(damage, 0, critical=critical)
 
-    def _take_damage(self, damage, offset):
+    def _take_damage(self, damage, offset, *, critical=False):
         actual = min(self.hp, damage)
         if actual <= 0:
             return
         self.hp -= actual
         self.hit_flash_remaining = HIT_FLASH_DURATION
         popup_y = self.foot_y + self.HEALTH_BAR_OFFSET_Y + self.HEALTH_BAR_HEIGHT + 15
-        add_damage_popup(self.damage_popups, actual, self.x + offset, popup_y)
+        add_damage_popup(self.damage_popups, actual, self.x + offset, popup_y, critical=critical)
         if self.hp <= 0:
             self._attack_time = None
 
