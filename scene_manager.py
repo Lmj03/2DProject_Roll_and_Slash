@@ -32,4 +32,4 @@ class SceneManager:
         return True
 
     def draw(self):
-        self.current.world.draw(self.current.camera)
+        self.current.world.draw(self.current.camera, shake=self.player.hit_shake.offset)

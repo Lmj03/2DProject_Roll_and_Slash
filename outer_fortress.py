@@ -58,8 +58,8 @@ class Background:
 
     def draw(self, camera):
         left, bottom = camera.origin
-        self.image.clip_draw(left, bottom, camera.width, camera.height,
-                             camera.width / 2, camera.height / 2)
+        x, y = camera.project(left + camera.width / 2, bottom + camera.height / 2)
+        self.image.clip_draw(left, bottom, camera.width, camera.height, x, y)
 
 
 class GateWallSprite:

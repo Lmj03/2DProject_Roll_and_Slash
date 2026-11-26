@@ -57,11 +57,14 @@ class TrainingDummy:
             if self._hit_time >= self.HIT_FRAME_TIME * self.HIT_FRAME_COUNT:
                 self._hit_time = None
 
-    def draw(self):
+    def draw(self, camera=None):
         frame = 0 if self._hit_time is None else 1 + int(self._hit_time / self.HIT_FRAME_TIME)
         if frame == 0 and self.stun_remaining > 0:
             frame = self.HIT_FRAME_COUNT
         sheet = self.flash_sheet if self.hit_flash_remaining > 0 else self.sheet
+        x, y = self.x, self.foot_y + self.FEET_TO_CENTER
+        if camera is not None:
+            x, y = camera.project(x, y)
         sheet.clip_draw(frame * self.CELL_SIZE, 0, self.CELL_SIZE, self.CELL_SIZE,
-                             self.x, self.foot_y + self.FEET_TO_CENTER, self.DRAW_SIZE, self.DRAW_SIZE)
-        draw_damage_popups(self.damage_font, self.damage_popups)
+                        x, y, self.DRAW_SIZE, self.DRAW_SIZE)
+        draw_damage_popups(self.damage_font, self.damage_popups, camera=camera)

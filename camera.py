@@ -1,4 +1,48 @@
-from math import exp
+from dataclasses import dataclass
+from math import cos, exp, sin, tau
+
+
+class ScreenShake:
+    def __init__(self):
+        self.remaining = 0.0
+        self._duration = 0.0
+        self._strength = 0
+        self._direction = (1, 0)
+
+    def start(self, direction, strength, duration):
+        self._direction = direction
+        self._strength = strength
+        self._duration = self.remaining = duration
+
+    def update(self, delta_time):
+        self.remaining = max(0.0, self.remaining - delta_time)
+
+    def reset(self):
+        self.remaining = 0.0
+
+    @property
+    def offset(self):
+        if self.remaining <= 0:
+            return (0, 0)
+        fraction = self.remaining / self._duration
+        phase = tau * 2.5 * (1.0 - fraction)
+        along = self._strength * fraction * cos(phase)
+        across = self._strength * fraction * 0.35 * sin(phase)
+        dx, dy = self._direction
+        return round(dx * along - dy * across), round(dy * along + dx * across)
+
+
+@dataclass(frozen=True)
+class RenderView:
+    width: int
+    height: int
+    origin: tuple[int, int] = (0, 0)
+    offset: tuple[int, int] = (0, 0)
+
+    def project(self, x, y):
+        left, bottom = self.origin
+        dx, dy = self.offset
+        return x - left + dx, y - bottom + dy
 
 
 class Camera:

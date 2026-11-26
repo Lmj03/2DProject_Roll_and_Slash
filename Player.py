@@ -4,6 +4,7 @@ from pico2d import SDL_KEYDOWN, SDL_KEYUP, SDLK_1, SDLK_6, SDLK_a
 from transitions import Machine
 
 from buffs import BuffState
+from camera import ScreenShake
 from damage_popups import POPUP_DURATION, add_damage_popup, update_damage_popups
 import player_movement as movement
 from flash_strike import FlashPath, find_flash_landing
@@ -57,7 +58,8 @@ class player:
         self.hp = self.max_hp
         self.hit_flash_remaining = 0.0
         self.hit_stop_remaining = 0.0
-        self._last_hit_stop_attack_id = None
+        self._last_hit_feedback_attack_id = None
+        self.hit_shake = ScreenShake()
         self.damage_popups = []
         self.buffs = BuffState()
         self.base_attack_power = 50
@@ -111,7 +113,7 @@ class player:
                 and self.frame in self.PARRY_ACTIVE_FRAMES):
             self.start_parry_counter()
             attacker.receive_parry(self.attack_power, self.PARRY_STUN_DURATION)
-            self.request_hit_stop()
+            self.confirm_hit()
             return 0
         damage = min(self.hp, amount)
         self.hp = max(0, self.hp - damage)
@@ -119,11 +121,15 @@ class player:
         add_damage_popup(self.damage_popups, damage, self.x, self.y + 55, self.DAMAGE_POPUP_TIME)
         return damage
 
-    def request_hit_stop(self):
-        duration = self.HIT_STOP_TIMES.get(self.state, 0.0)
-        if duration and self._last_hit_stop_attack_id != self.attack_id:
-            self.hit_stop_remaining = duration
-            self._last_hit_stop_attack_id = self.attack_id
+    def confirm_hit(self):
+        direction = movement.FACING_AXES[self.dir]
+        if self.state == 'SWORD_SPIN':
+            # Each spin contact gives a gentler jolt without interrupting movement.
+            self.hit_shake.start(direction, strength=2, duration=0.09)
+        elif self._last_hit_feedback_attack_id != self.attack_id:
+            self.hit_stop_remaining = self.HIT_STOP_TIMES.get(self.state, 0.0)
+            self.hit_shake.start(direction, strength=4, duration=0.14)
+            self._last_hit_feedback_attack_id = self.attack_id
 
     @property
     def attack_power(self):

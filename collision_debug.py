@@ -34,7 +34,7 @@ class CollisionDebug:
         self.enemies = tuple(enemies)
         self.lobby_boxes = _lobby_collision_boxes()
 
-    def draw(self):
+    def draw(self, camera=None):
         renderer = self.player.renderer
         boxes = [*self.lobby_boxes, self.dummy.movement_box, self.dummy.hurtbox,
                  renderer.body_box(self.player), renderer.attack_box(self.player)]
@@ -42,4 +42,8 @@ class CollisionDebug:
             boxes.extend((enemy.movement_box, enemy.hurtbox, enemy.attack_box()))
         for box in boxes:
             if box is not None:
-                draw_rectangle(box.left, box.bottom, box.right, box.top, 255, 0, 0)
+                left, bottom, right, top = box.left, box.bottom, box.right, box.top
+                if camera is not None:
+                    left, bottom = camera.project(left, bottom)
+                    right, top = camera.project(right, top)
+                draw_rectangle(left, bottom, right, top, 255, 0, 0)

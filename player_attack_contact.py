@@ -38,5 +38,5 @@ class PlayerAttackContact:
             damage *= player.FLASH_STRIKE_DAMAGE_MULTIPLIER
         self.last_attack_id = player.attack_id
         if damage > 0:
-            player.request_hit_stop()
+            player.confirm_hit()
         return damage, popup_offset

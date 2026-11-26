@@ -45,9 +45,12 @@ class Campfire:
                 break
         self.damage_cooldown = max(0.0, self.damage_cooldown - remaining)
 
-    def draw(self):
+    def draw(self, camera=None):
         frame = int((self.elapsed + 1e-9) / self.FRAME_TIME) % self.FRAME_COUNT
+        x, y = self.x, self.foot_y + self.FOOT_TO_CENTER
+        if camera is not None:
+            x, y = camera.project(x, y)
         self.sheet.clip_draw(
             frame * self.CELL_SIZE, 0, self.CELL_SIZE, self.CELL_SIZE,
-            self.x, self.foot_y + self.FOOT_TO_CENTER, self.DRAW_SIZE, self.DRAW_SIZE,
+            x, y, self.DRAW_SIZE, self.DRAW_SIZE,
         )

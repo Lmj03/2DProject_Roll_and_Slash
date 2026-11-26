@@ -31,8 +31,11 @@ class LobbySprite:
         self.x = left + self.image.w / 2
         self.y = CANVAS_HEIGHT - top - self.image.h / 2
 
-    def draw(self):
-        self.image.draw(self.x, self.y)
+    def draw(self, camera=None):
+        x, y = self.x, self.y
+        if camera is not None:
+            x, y = camera.project(x, y)
+        self.image.draw(x, y)
 
 
 def create_lobby_world(player, dice_ui=None, well=None, campfire=None, dummy=None, *, enemies=()):
@@ -96,10 +99,12 @@ class Scene:
         player.y = foot_y + player.FOOT_OFFSET_Y
         player.damage_popups.clear()
         player.hit_stop_remaining = 0.0
+        player.hit_shake.reset()
         if self.camera is not None:
             self.camera.follow(player.x, player.y, snap=True)
 
     def advance(self, player, dice_ui, delta_time):
+        player.hit_shake.update(delta_time)
         flash_pending = player.state == 'FLASH_STRIKE' and player.flash_path is None
         advance_simulation(player, dice_ui, delta_time, self.can_move, self.campfire,
                            self.dummy, enemies=self.enemies)
