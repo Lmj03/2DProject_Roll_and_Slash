@@ -178,14 +178,26 @@ def create_outer_fortress_scene(player, dice_ui):
 def create_talisman_gallery_scene(player, dice_ui):
     world = game_world.GameWorld()
     camera = Camera((CANVAS_WIDTH, CANVAS_HEIGHT), talisman_gallery.SIZE)
+    wraiths = tuple(ArmoredWraith(route[0], patrol=route, patrol_area=area)
+                    for area, route in talisman_gallery.WRAITH_PATROLS)
+    hounds = tuple(SkullHound(route[0], patrol=route, patrol_area=area)
+                   for area, route in talisman_gallery.HOUND_PATROLS)
+    statues = tuple(TalismanStatue(route[0], patrol=route, patrol_area=area)
+                    for area, route in talisman_gallery.STATUE_PATROLS)
+    enemies = (*wraiths, *hounds, *statues)
+
     world.add(MapBackground('stage_02_talisman_gallery.png', talisman_gallery.SIZE), game_world.BACKGROUND)
+    for statue in statues:
+        world.add(LandingWarning(statue), game_world.BACKGROUND)
+    for enemy in enemies:
+        world.add(enemy, game_world.OBJECTS, foot_y=lambda enemy=enemy: enemy.foot_y)
     for name, left, top, foot_y in talisman_gallery.PILLAR_SPRITES:
         pillar = MapObjectSprite(name, left, top, talisman_gallery.SIZE[1])
         world.add(pillar, game_world.OBJECTS, foot_y=lambda y=foot_y: y)
     world.add(player, game_world.OBJECTS, foot_y=lambda: player.y - player.FOOT_OFFSET_Y)
     add_hud(world, player, dice_ui)
-    return Scene(world, talisman_gallery.ENTRY, player.RIGHT, can_move=talisman_gallery.can_walk,
-                 camera=camera)
+    return Scene(world, talisman_gallery.ENTRY, player.RIGHT,
+                 enemies=enemies, can_move=talisman_gallery.can_walk, camera=camera)
 
 
 def create_lobby_scene(player, dice_ui):

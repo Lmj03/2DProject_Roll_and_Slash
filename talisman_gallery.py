@@ -1,8 +1,37 @@
+from bounding_box import BoundingBox
 from collision import _polygon_location
 
 
 SIZE = 2600, 1500
 ENTRY = 348, 142  # Foot position on the lower-left entrance path.
+
+# Keep enemies in four parts of the courtyard. The first point of each loop is the spawn.
+WEST_COURT = BoundingBox(375, 350, 1030, 1195)
+CENTRAL_COURT = BoundingBox(1000, 240, 1720, 1160)
+SOUTHEAST_COURT = BoundingBox(1690, 250, 2315, 720)
+NORTHEAST_COURT = BoundingBox(1690, 700, 2340, 1180)
+
+WRAITH_PATROLS = (
+    (WEST_COURT, ((700, 420), (820, 420), (820, 500), (700, 500))),
+    (WEST_COURT, ((470, 800), (590, 800), (590, 930), (470, 930))),
+    (CENTRAL_COURT, ((1075, 410), (1240, 410), (1240, 490), (1075, 490))),
+    (CENTRAL_COURT, ((1255, 920), (1395, 920), (1395, 1010), (1255, 1010))),
+    (SOUTHEAST_COURT, ((1790, 392), (1885, 392), (1885, 485), (1790, 485))),
+    (NORTHEAST_COURT, ((2070, 845), (2195, 845), (2195, 920), (2070, 920))),
+)
+HOUND_PATROLS = (
+    (WEST_COURT, ((535, 580), (730, 580), (730, 680), (535, 680))),
+    (CENTRAL_COURT, ((1200, 605), (1385, 605), (1385, 690), (1200, 690))),
+    (CENTRAL_COURT, ((1495, 335), (1620, 335), (1620, 445), (1495, 445))),
+    (SOUTHEAST_COURT, ((2070, 400), (2230, 400), (2230, 510), (2070, 510))),
+    (NORTHEAST_COURT, ((1830, 740), (1950, 740), (1950, 850), (1830, 850))),
+)
+STATUE_PATROLS = (
+    (WEST_COURT, ((920, 1050), (995, 1050), (995, 1155), (920, 1155))),
+    (CENTRAL_COURT, ((1590, 690), (1655, 690), (1655, 780), (1590, 780))),
+    (SOUTHEAST_COURT, ((1950, 600), (2040, 600), (2040, 678), (1950, 678))),
+    (NORTHEAST_COURT, ((1950, 1045), (2040, 1045), (2040, 1085), (1950, 1085))),
+)
 
 # Trace the floor and the two pillars on a half-size image, using top-left coordinates.
 WALKABLE = tuple((x * 2, y * 2) for x, y in (
