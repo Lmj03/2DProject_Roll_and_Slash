@@ -19,6 +19,9 @@ class player:
     IDLE_FRAME_TIME = 0.1
     RUN_FRAME_TIME = 0.02
     ATTACK_FRAME_TIME = 0.05
+    ATTACK_FRAME_COUNT = 10
+    ATTACK_RECOVERY_START_FRAMES = (9, 7, 9)  # First frame after the last active frame of each swing.
+    ATTACK_RECOVERY_FRAME_TIME = 0.02
     SWORD_SKILL_TIMINGS = {
         'QUICK_THRUST': (0.05, 6),        # Frame time in seconds, frame count.
         'HORIZONTAL_SLASH': (0.065, 6),
@@ -78,6 +81,7 @@ class player:
         self.frame = 0
         self._animation_time = 0.0
         self._attack_key_down = False
+        self._attack_queued = False
         self.attack_combo = 0
         self.attack_id = 0
         self.flash_path = None
@@ -93,6 +97,7 @@ class player:
                 {'trigger': 'start_running', 'source': 'IDLE', 'dest': 'RUN'},
                 {'trigger': 'stop_running', 'source': 'RUN', 'dest': 'IDLE'},
                 {'trigger': 'start_attack', 'source': ['IDLE', 'RUN'], 'dest': 'ATTACK'},
+                {'trigger': 'chain_attack', 'source': 'ATTACK', 'dest': 'ATTACK'},
                 {'trigger': 'start_quick_thrust', 'source': ['IDLE', 'RUN'], 'dest': 'QUICK_THRUST'},
                 {'trigger': 'start_horizontal_slash', 'source': ['IDLE', 'RUN'], 'dest': 'HORIZONTAL_SLASH'},
                 {'trigger': 'start_dash_chop', 'source': ['IDLE', 'RUN'], 'dest': 'DASH_CHOP'},
@@ -163,6 +168,7 @@ class player:
     def _reset_animation(self):
         self.frame = 0
         self._animation_time = 0.0
+        self._attack_queued = False
         if self.state in self.ATTACK_STATES:
             self.attack_id += 1
         self.flash_path = None
@@ -170,6 +176,7 @@ class player:
     def reset_inputs(self):
         self.pressed_keys.clear()
         self._attack_key_down = False
+        self._attack_queued = False
         self._sync_movement()
 
     def handle_events(self, event):
@@ -183,6 +190,8 @@ class player:
                 self._attack_key_down = True
                 if self.state in ('IDLE', 'RUN'):
                     self.start_attack()
+                elif self.state == 'ATTACK':
+                    self._attack_queued = True
             return
 
         if event.type == SDL_KEYDOWN and SDLK_1 <= event.key <= SDLK_6:
@@ -250,9 +259,12 @@ class player:
 
     def _update_motion(self, delta_time, can_move):
         self._animation_time += delta_time
-        if self.state in self.ATTACK_STATES:
-            normal_attack = self.state == 'ATTACK'
-            frame_time, frame_count = self.SWORD_SKILL_TIMINGS.get(self.state, (self.ATTACK_FRAME_TIME, 10))
+        if self.state == 'ATTACK':
+            delta_time = self._advance_normal_attack()
+            if delta_time is None:
+                return
+        elif self.state in self.SWORD_SKILL_TIMINGS:
+            frame_time, frame_count = self.SWORD_SKILL_TIMINGS[self.state]
             if self.state == 'DASH_CHOP':
                 self._advance_dash_chop(delta_time, frame_time, can_move)
             duration = frame_time * frame_count
@@ -270,8 +282,6 @@ class player:
             delta_time = max(0.0, self._animation_time - duration)
             self.stop_attack()
             self._sync_movement()
-            if normal_attack:
-                self.attack_combo = (self.attack_combo + 1) % 3
             self._animation_time = delta_time
 
         if self.state == 'RUN':
@@ -282,6 +292,33 @@ class player:
 
         self._animation_time %= frame_time * frame_count
         self.frame = int((self._animation_time + self.ANIMATION_EPSILON) / frame_time) % frame_count
+
+    def _advance_normal_attack(self):
+        while True:
+            recovery_frame = self.ATTACK_RECOVERY_START_FRAMES[self.attack_combo]
+            recovery_start = recovery_frame * self.ATTACK_FRAME_TIME
+            recovery_count = self.ATTACK_FRAME_COUNT - recovery_frame
+            duration = recovery_start + recovery_count * self.ATTACK_RECOVERY_FRAME_TIME
+            elapsed = self._animation_time + self.ANIMATION_EPSILON
+            if elapsed < recovery_start:
+                self.frame = int(elapsed / self.ATTACK_FRAME_TIME)
+                return None
+            if elapsed < duration:
+                self.frame = recovery_frame + int((elapsed - recovery_start) / self.ATTACK_RECOVERY_FRAME_TIME)
+                return None
+
+            remaining = max(0.0, self._animation_time - duration)
+            self.attack_combo = (self.attack_combo + 1) % len(self.ATTACK_RECOVERY_START_FRAMES)
+            if not self._attack_queued:
+                self.stop_attack()
+                self._sync_movement()
+                self._animation_time = remaining
+                return remaining
+
+            # Carry the remaining time into a fresh swing, including on a slow frame.
+            self._sync_movement()
+            self.chain_attack()
+            self._animation_time = remaining
 
     def resolve_flash_strike(self, can_travel, can_land):
         start = (self.x, self.y)
